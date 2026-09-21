@@ -1,0 +1,1833 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>MEYDEN Video Compressor — 45 Mo</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top, #252525 0%, #0d0d0d 45%, #050505 100%);
+      color: #ffffff;
+      font-family: Arial, Helvetica, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 30px 15px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 850px;
+      background: rgba(18, 18, 18, 0.97);
+      border: 1px solid #333;
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 25px 80px rgba(0,0,0,.65);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(30px, 6vw, 55px);
+      line-height: 1;
+      text-align: center;
+      letter-spacing: -2px;
+    }
+
+    .brand {
+      color: #ffffff;
+    }
+
+    .accent {
+      color: #ff7a00;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #aaa;
+      margin: 12px 0 28px;
+      line-height: 1.5;
+    }
+
+    .limit {
+      display: inline-block;
+      background: #ff7a00;
+      color: #000;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-weight: 900;
+      margin-top: 10px;
+    }
+
+    .drop-zone {
+      border: 2px dashed #555;
+      border-radius: 20px;
+      padding: 38px 20px;
+      text-align: center;
+      transition: .25s ease;
+      cursor: pointer;
+      background: #111;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag {
+      border-color: #ff7a00;
+      background: #171717;
+      transform: translateY(-2px);
+    }
+
+    .drop-icon {
+      font-size: 60px;
+      margin-bottom: 12px;
+    }
+
+    .drop-title {
+      font-size: 23px;
+      font-weight: bold;
+    }
+
+    .drop-text {
+      color: #999;
+      margin-top: 8px;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .button {
+      width: 100%;
+      border: none;
+      padding: 17px 20px;
+      border-radius: 14px;
+      font-size: 17px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: .2s ease;
+      margin-top: 16px;
+    }
+
+    .button-primary {
+      background: #ff7a00;
+      color: #050505;
+    }
+
+    .button-primary:hover {
+      transform: scale(1.01);
+      background: #ff8f25;
+    }
+
+    .button:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .info {
+      display: none;
+      margin-top: 25px;
+      background: #0b0b0b;
+      border: 1px solid #292929;
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      padding: 14px 18px;
+      border-bottom: 1px solid #222;
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      color: #8d8d8d;
+    }
+
+    .info-value {
+      text-align: right;
+      font-weight: bold;
+    }
+
+    .video-box {
+      margin-top: 22px;
+      display: none;
+    }
+
+    video {
+      width: 100%;
+      max-height: 430px;
+      background: #000;
+      border-radius: 16px;
+    }
+
+    .progress-section {
+      display: none;
+      margin-top: 25px;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .progress-title {
+      font-weight: bold;
+    }
+
+    .progress-percent {
+      color: #ff7a00;
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .progress-shell {
+      height: 19px;
+      background: #272727;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        #ff6500,
+        #ff9d00
+      );
+      transition: width .25s linear;
+    }
+
+    .status {
+      margin-top: 12px;
+      color: #bcbcbc;
+      text-align: center;
+      min-height: 25px;
+    }
+
+    .result {
+      display: none;
+      margin-top: 26px;
+      background: #101a11;
+      border: 1px solid #27542b;
+      border-radius: 18px;
+      padding: 20px;
+    }
+
+    .success {
+      color: #59e866;
+      font-size: 24px;
+      font-weight: 900;
+      margin-bottom: 18px;
+      text-align: center;
+    }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 12px;
+      align-items: center;
+      text-align: center;
+      margin: 18px 0;
+    }
+
+    .size-box {
+      background: #080808;
+      padding: 18px 8px;
+      border-radius: 14px;
+    }
+
+    .size-number {
+      font-size: 24px;
+      font-weight: 900;
+    }
+
+    .size-label {
+      color: #888;
+      margin-top: 4px;
+      font-size: 13px;
+    }
+
+    .arrow {
+      font-size: 30px;
+      color: #ff7a00;
+    }
+
+    .download {
+      display: block;
+      text-decoration: none;
+      text-align: center;
+      background: #ffffff;
+      color: #000000;
+      border-radius: 14px;
+      padding: 17px;
+      font-weight: 900;
+      margin-top: 16px;
+    }
+
+    .download:hover {
+      background: #ff7a00;
+    }
+
+    .warning {
+      display: none;
+      background: #301c00;
+      border: 1px solid #7c4800;
+      color: #ffb75e;
+      border-radius: 14px;
+      padding: 14px;
+      margin-top: 18px;
+      line-height: 1.5;
+    }
+
+    .error {
+      display: none;
+      background: #2a1010;
+      border: 1px solid #6c2424;
+      color: #ff8181;
+      border-radius: 14px;
+      padding: 14px;
+      margin-top: 18px;
+      white-space: pre-wrap;
+    }
+
+    .footer {
+      margin-top: 30px;
+      color: #606060;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      .app {
+        padding: 18px;
+        border-radius: 18px;
+      }
+
+      .comparison {
+        grid-template-columns: 1fr;
+      }
+
+      .arrow {
+        transform: rotate(90deg);
+      }
+
+      .info-row {
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .info-value {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <h1>
+    <span class="brand">VIDEO</span>
+    <span class="accent">45</span>
+  </h1>
+
+  <div class="subtitle">
+    Compresseur vidéo automatique
+    <br>
+    <span class="limit">OBJECTIF ≤ 45 Mo</span>
+  </div>
+
+  <div id="dropZone" class="drop-zone">
+    <div class="drop-icon">🎬</div>
+
+    <div class="drop-title">
+      Dépose ta vidéo ici
+    </div>
+
+    <div class="drop-text">
+      ou touche pour sélectionner un fichier
+    </div>
+
+    <input
+      id="fileInput"
+      type="file"
+      accept="video/*,.mov,.mkv,.avi,.webm,.m4v"
+    >
+  </div>
+
+  <div id="warning" class="warning"></div>
+
+  <div id="info" class="info">
+
+    <div class="info-row">
+      <div class="info-label">Fichier</div>
+      <div id="fileName" class="info-value">—</div>
+    </div>
+
+    <div class="info-row">
+      <div class="info-label">Poids original</div>
+      <div id="originalSize" class="info-value">—</div>
+    </div>
+
+    <div class="info-row">
+      <div class="info-label">Durée</div>
+      <div id="durationText" class="info-value">—</div>
+    </div>
+
+    <div class="info-row">
+      <div class="info-label">Résolution originale</div>
+      <div id="resolutionText" class="info-value">—</div>
+    </div>
+
+    <div class="info-row">
+      <div class="info-label">Bitrate vidéo calculé</div>
+      <div id="bitrateText" class="info-value">—</div>
+    </div>
+
+    <div class="info-row">
+      <div class="info-label">Sortie prévue</div>
+      <div id="outputProfile" class="info-value">—</div>
+    </div>
+
+  </div>
+
+  <div id="videoBox" class="video-box">
+    <video
+      id="preview"
+      controls
+      playsinline
+      preload="metadata"
+    ></video>
+  </div>
+
+  <button
+    id="convertBtn"
+    class="button button-primary"
+    disabled
+  >
+    COMPRESSER LA VIDÉO
+  </button>
+
+  <div
+    id="progressSection"
+    class="progress-section"
+  >
+
+    <div class="progress-header">
+      <div
+        id="progressTitle"
+        class="progress-title"
+      >
+        Préparation
+      </div>
+
+      <div
+        id="progressPercent"
+        class="progress-percent"
+      >
+        0 %
+      </div>
+    </div>
+
+    <div class="progress-shell">
+      <div
+        id="progressBar"
+        class="progress-bar"
+      ></div>
+    </div>
+
+    <div
+      id="status"
+      class="status"
+    >
+      —
+    </div>
+
+  </div>
+
+  <div id="result" class="result">
+
+    <div class="success">
+      ✓ VIDÉO OPTIMISÉE
+    </div>
+
+    <div class="comparison">
+
+      <div class="size-box">
+        <div
+          id="beforeSize"
+          class="size-number"
+        >
+          —
+        </div>
+
+        <div class="size-label">
+          AVANT
+        </div>
+      </div>
+
+      <div class="arrow">
+        ➜
+      </div>
+
+      <div class="size-box">
+        <div
+          id="afterSize"
+          class="size-number"
+        >
+          —
+        </div>
+
+        <div class="size-label">
+          APRÈS
+        </div>
+      </div>
+
+    </div>
+
+    <video
+      id="resultVideo"
+      controls
+      playsinline
+    ></video>
+
+    <a
+      id="downloadBtn"
+      class="download"
+      download="video-45mb.mp4"
+    >
+      TÉLÉCHARGER LE MP4
+    </a>
+
+  </div>
+
+  <div id="error" class="error"></div>
+
+  <div class="footer">
+    MEYDEN — Conversion locale dans votre navigateur
+  </div>
+
+</div>
+
+
+<script type="module">
+
+/* ==========================================================
+   IMPORT FFMPEG
+   ========================================================== */
+
+import {
+  FFmpeg
+} from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js";
+
+import {
+  fetchFile,
+  toBlobURL
+} from "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js";
+
+
+/* ==========================================================
+   CONSTANTES
+   ========================================================== */
+
+const MB = 1024 * 1024;
+
+/*
+   La limite officielle est 45 Mo.
+
+   On vise volontairement 43,5 Mo afin de conserver
+   une marge de sécurité pour le conteneur MP4.
+*/
+const MAX_FILE_MB = 45;
+const TARGET_MB = 43.5;
+
+const TARGET_BYTES = TARGET_MB * MB;
+
+
+/* ==========================================================
+   ÉLÉMENTS HTML
+   ========================================================== */
+
+const dropZone =
+  document.getElementById("dropZone");
+
+const fileInput =
+  document.getElementById("fileInput");
+
+const convertBtn =
+  document.getElementById("convertBtn");
+
+const info =
+  document.getElementById("info");
+
+const videoBox =
+  document.getElementById("videoBox");
+
+const preview =
+  document.getElementById("preview");
+
+const fileNameEl =
+  document.getElementById("fileName");
+
+const originalSizeEl =
+  document.getElementById("originalSize");
+
+const durationTextEl =
+  document.getElementById("durationText");
+
+const resolutionTextEl =
+  document.getElementById("resolutionText");
+
+const bitrateTextEl =
+  document.getElementById("bitrateText");
+
+const outputProfileEl =
+  document.getElementById("outputProfile");
+
+const progressSection =
+  document.getElementById("progressSection");
+
+const progressBar =
+  document.getElementById("progressBar");
+
+const progressPercent =
+  document.getElementById("progressPercent");
+
+const progressTitle =
+  document.getElementById("progressTitle");
+
+const status =
+  document.getElementById("status");
+
+const result =
+  document.getElementById("result");
+
+const beforeSize =
+  document.getElementById("beforeSize");
+
+const afterSize =
+  document.getElementById("afterSize");
+
+const resultVideo =
+  document.getElementById("resultVideo");
+
+const downloadBtn =
+  document.getElementById("downloadBtn");
+
+const errorBox =
+  document.getElementById("error");
+
+const warningBox =
+  document.getElementById("warning");
+
+
+/* ==========================================================
+   VARIABLES
+   ========================================================== */
+
+let selectedFile = null;
+
+let videoDuration = 0;
+
+let sourceWidth = 0;
+
+let sourceHeight = 0;
+
+let calculatedBitrate = 0;
+
+let currentScale = 720;
+
+let currentFPS = 30;
+
+let ffmpeg = null;
+
+let ffmpegLoaded = false;
+
+let currentPass = 0;
+
+let sourceObjectURL = null;
+
+let resultObjectURL = null;
+
+
+/* ==========================================================
+   FORMATAGE
+   ========================================================== */
+
+function formatBytes(bytes) {
+
+  if (!bytes || bytes <= 0) {
+    return "0 Mo";
+  }
+
+  return (
+    bytes / MB
+  ).toFixed(2) + " Mo";
+}
+
+
+function formatDuration(seconds) {
+
+  seconds = Math.round(seconds);
+
+  const h =
+    Math.floor(seconds / 3600);
+
+  const m =
+    Math.floor((seconds % 3600) / 60);
+
+  const s =
+    seconds % 60;
+
+  if (h > 0) {
+
+    return (
+      String(h).padStart(2, "0")
+      + ":"
+      + String(m).padStart(2, "0")
+      + ":"
+      + String(s).padStart(2, "0")
+    );
+  }
+
+  return (
+    String(m).padStart(2, "0")
+    + ":"
+    + String(s).padStart(2, "0")
+  );
+}
+
+
+/* ==========================================================
+   CHOIX QUALITÉ
+   ========================================================== */
+
+function chooseProfile(videoKbps) {
+
+  /*
+      Plus la vidéo est longue,
+      moins nous disposons de bitrate.
+
+      On diminue progressivement la résolution.
+  */
+
+  if (videoKbps >= 3200) {
+
+    return {
+      height: 1080,
+      fps: 30
+    };
+
+  }
+
+  if (videoKbps >= 1800) {
+
+    return {
+      height: 720,
+      fps: 30
+    };
+
+  }
+
+  if (videoKbps >= 1000) {
+
+    return {
+      height: 720,
+      fps: 24
+    };
+
+  }
+
+  if (videoKbps >= 600) {
+
+    return {
+      height: 540,
+      fps: 24
+    };
+
+  }
+
+  if (videoKbps >= 350) {
+
+    return {
+      height: 480,
+      fps: 24
+    };
+
+  }
+
+  if (videoKbps >= 200) {
+
+    return {
+      height: 360,
+      fps: 20
+    };
+
+  }
+
+  return {
+    height: 240,
+    fps: 15
+  };
+}
+
+
+/* ==========================================================
+   CALCUL BITRATE
+   ========================================================== */
+
+function calculateEncodingSettings() {
+
+  /*
+      FORMULE :
+
+      Taille = bitrate × durée
+
+      Donc :
+
+      bitrate =
+      (taille maximale × 8) / durée
+  */
+
+  const targetBits =
+    TARGET_BYTES * 8;
+
+  const totalBitsPerSecond =
+    targetBits / videoDuration;
+
+  const totalKbps =
+    totalBitsPerSecond / 1000;
+
+
+  /*
+      Audio AAC.
+
+      64 kb/s donne un compromis correct
+      pour parole / rap / musique.
+  */
+
+  let audioKbps = 64;
+
+
+  /*
+      Pour une très longue vidéo,
+      on peut encore réduire l'audio.
+  */
+
+  if (totalKbps < 350) {
+    audioKbps = 48;
+  }
+
+  if (totalKbps < 200) {
+    audioKbps = 32;
+  }
+
+
+  /*
+      Marge supplémentaire pour métadonnées
+      et overhead du conteneur MP4.
+  */
+
+  let videoKbps =
+    totalKbps
+    - audioKbps
+    - 30;
+
+
+  /*
+      FFmpeg a besoin d'un minimum raisonnable.
+  */
+
+  videoKbps =
+    Math.max(
+      80,
+      Math.floor(videoKbps)
+    );
+
+
+  const profile =
+    chooseProfile(videoKbps);
+
+
+  calculatedBitrate =
+    videoKbps;
+
+  currentScale =
+    profile.height;
+
+  currentFPS =
+    profile.fps;
+
+
+  bitrateTextEl.textContent =
+    videoKbps + " kb/s";
+
+
+  outputProfileEl.textContent =
+    profile.height
+    + "p • "
+    + profile.fps
+    + " FPS • AAC "
+    + audioKbps
+    + " kb/s";
+
+
+  return {
+    videoKbps,
+    audioKbps,
+    height: profile.height,
+    fps: profile.fps
+  };
+}
+
+
+/* ==========================================================
+   SÉLECTION VIDÉO
+   ========================================================== */
+
+dropZone.addEventListener(
+  "click",
+  () => fileInput.click()
+);
+
+
+fileInput.addEventListener(
+  "change",
+  event => {
+
+    const file =
+      event.target.files[0];
+
+    if (file) {
+      loadVideo(file);
+    }
+  }
+);
+
+
+/* ==========================================================
+   DRAG & DROP
+   ========================================================== */
+
+dropZone.addEventListener(
+  "dragover",
+  event => {
+
+    event.preventDefault();
+
+    dropZone.classList.add("drag");
+  }
+);
+
+
+dropZone.addEventListener(
+  "dragleave",
+  () => {
+
+    dropZone.classList.remove("drag");
+  }
+);
+
+
+dropZone.addEventListener(
+  "drop",
+  event => {
+
+    event.preventDefault();
+
+    dropZone.classList.remove("drag");
+
+    const file =
+      event.dataTransfer.files[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (
+      !file.type.startsWith("video/")
+    ) {
+
+      showError(
+        "Le fichier sélectionné n'est pas reconnu comme une vidéo."
+      );
+
+      return;
+    }
+
+    loadVideo(file);
+  }
+);
+
+
+/* ==========================================================
+   LECTURE MÉTADONNÉES
+   ========================================================== */
+
+function loadVideo(file) {
+
+  resetResult();
+
+  selectedFile = file;
+
+  fileNameEl.textContent =
+    file.name;
+
+  originalSizeEl.textContent =
+    formatBytes(file.size);
+
+
+  if (sourceObjectURL) {
+    URL.revokeObjectURL(sourceObjectURL);
+  }
+
+
+  sourceObjectURL =
+    URL.createObjectURL(file);
+
+  preview.src =
+    sourceObjectURL;
+
+
+  preview.onloadedmetadata = () => {
+
+    videoDuration =
+      preview.duration;
+
+    sourceWidth =
+      preview.videoWidth;
+
+    sourceHeight =
+      preview.videoHeight;
+
+
+    durationTextEl.textContent =
+      formatDuration(videoDuration);
+
+
+    resolutionTextEl.textContent =
+      sourceWidth
+      + " × "
+      + sourceHeight;
+
+
+    calculateEncodingSettings();
+
+
+    info.style.display =
+      "block";
+
+    videoBox.style.display =
+      "block";
+
+    convertBtn.disabled =
+      false;
+
+
+    /*
+       Avertissement si fichier très gros.
+
+       Ce n'est pas un refus.
+    */
+
+    if (file.size > 700 * MB) {
+
+      warningBox.style.display =
+        "block";
+
+      warningBox.textContent =
+        "⚠ Cette vidéo est très volumineuse. "
+        + "La conversion est possible, mais un ordinateur "
+        + "avec beaucoup de mémoire est recommandé.";
+
+    } else {
+
+      warningBox.style.display =
+        "none";
+    }
+
+
+    if (file.size <= MAX_FILE_MB * MB) {
+
+      warningBox.style.display =
+        "block";
+
+      warningBox.textContent =
+        "✓ Cette vidéo est déjà sous 45 Mo. "
+        + "Tu peux quand même l'optimiser et la convertir en MP4.";
+    }
+  };
+}
+
+
+/* ==========================================================
+   CHARGEMENT FFMPEG
+   ========================================================== */
+
+async function loadFFmpeg() {
+
+  if (ffmpegLoaded) {
+    return;
+  }
+
+
+  setStatus(
+    "Chargement du moteur vidéo…"
+  );
+
+
+  ffmpeg =
+    new FFmpeg();
+
+
+  /*
+      PROGRESSION
+
+      Pass 1 = 0 → 48 %
+      Pass 2 = 50 → 98 %
+  */
+
+  ffmpeg.on(
+    "progress",
+    ({ progress }) => {
+
+      let p =
+        Math.max(
+          0,
+          Math.min(
+            1,
+            progress || 0
+          )
+        );
+
+
+      let displayProgress = 0;
+
+
+      if (currentPass === 1) {
+
+        displayProgress =
+          p * 48;
+
+      } else if (currentPass === 2) {
+
+        displayProgress =
+          50 + p * 48;
+
+      } else {
+
+        displayProgress =
+          p * 98;
+      }
+
+
+      setProgress(
+        displayProgress
+      );
+    }
+  );
+
+
+  const baseURL =
+    "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
+
+
+  await ffmpeg.load({
+
+    coreURL:
+      await toBlobURL(
+        `${baseURL}/ffmpeg-core.js`,
+        "text/javascript"
+      ),
+
+    wasmURL:
+      await toBlobURL(
+        `${baseURL}/ffmpeg-core.wasm`,
+        "application/wasm"
+      )
+
+  });
+
+
+  ffmpegLoaded = true;
+}
+
+
+/* ==========================================================
+   CONVERSION
+   ========================================================== */
+
+convertBtn.addEventListener(
+  "click",
+  async () => {
+
+    if (!selectedFile) {
+      return;
+    }
+
+
+    convertBtn.disabled =
+      true;
+
+    errorBox.style.display =
+      "none";
+
+    result.style.display =
+      "none";
+
+    progressSection.style.display =
+      "block";
+
+    setProgress(0);
+
+
+    try {
+
+      await loadFFmpeg();
+
+
+      const settings =
+        calculateEncodingSettings();
+
+
+      setStatus(
+        "Chargement de la vidéo…"
+      );
+
+
+      /*
+         Extension d'entrée.
+      */
+
+      const extension =
+        selectedFile.name
+        .split(".")
+        .pop()
+        .toLowerCase()
+        .replace(
+          /[^a-z0-9]/g,
+          ""
+        )
+        || "mp4";
+
+
+      const inputName =
+        "input." + extension;
+
+      const passOne =
+        "pass1.mp4";
+
+      const outputName =
+        "compressed.mp4";
+
+
+      /*
+         Nettoyage préventif.
+      */
+
+      await safeDelete(
+        inputName
+      );
+
+      await safeDelete(
+        passOne
+      );
+
+      await safeDelete(
+        outputName
+      );
+
+      await safeDelete(
+        "ffmpeg2pass-0.log"
+      );
+
+      await safeDelete(
+        "ffmpeg2pass-0.log.mbtree"
+      );
+
+
+      /*
+         Écriture du fichier dans le
+         système de fichiers WebAssembly.
+      */
+
+      await ffmpeg.writeFile(
+        inputName,
+        await fetchFile(selectedFile)
+      );
+
+
+      /*
+         Ne jamais agrandir inutilement
+         une vidéo déjà plus petite.
+      */
+
+      let finalHeight =
+        Math.min(
+          settings.height,
+          sourceHeight || settings.height
+        );
+
+
+      /*
+         Hauteur paire obligatoire pour x264.
+      */
+
+      finalHeight =
+        Math.max(
+          144,
+          Math.floor(finalHeight / 2) * 2
+        );
+
+
+      const scaleFilter =
+        `scale=-2:${finalHeight}:flags=lanczos,fps=${settings.fps}`;
+
+
+      /* ======================================================
+         PASS 1
+         ====================================================== */
+
+      currentPass = 1;
+
+      progressTitle.textContent =
+        "Analyse et optimisation";
+
+      setStatus(
+        "Passe 1/2 — analyse de la vidéo…"
+      );
+
+
+      await ffmpeg.exec([
+
+        "-y",
+
+        "-i",
+        inputName,
+
+        "-map",
+        "0:v:0",
+
+        "-c:v",
+        "libx264",
+
+        "-preset",
+        "veryfast",
+
+        "-b:v",
+        `${settings.videoKbps}k`,
+
+        "-maxrate",
+        `${Math.floor(settings.videoKbps * 1.20)}k`,
+
+        "-bufsize",
+        `${settings.videoKbps * 2}k`,
+
+        "-vf",
+        scaleFilter,
+
+        "-pix_fmt",
+        "yuv420p",
+
+        "-pass",
+        "1",
+
+        "-passlogfile",
+        "ffmpeg2pass",
+
+        "-an",
+
+        "-movflags",
+        "+faststart",
+
+        passOne
+      ]);
+
+
+      /*
+         On n'a plus besoin du fichier
+         vidéo généré lors de la passe 1.
+      */
+
+      await safeDelete(
+        passOne
+      );
+
+
+      /* ======================================================
+         PASS 2
+         ====================================================== */
+
+      currentPass = 2;
+
+      setStatus(
+        "Passe 2/2 — création du MP4 final…"
+      );
+
+
+      await ffmpeg.exec([
+
+        "-y",
+
+        "-i",
+        inputName,
+
+        "-map",
+        "0:v:0",
+
+        "-map",
+        "0:a?",
+
+        "-c:v",
+        "libx264",
+
+        "-preset",
+        "veryfast",
+
+        "-b:v",
+        `${settings.videoKbps}k`,
+
+        "-maxrate",
+        `${Math.floor(settings.videoKbps * 1.20)}k`,
+
+        "-bufsize",
+        `${settings.videoKbps * 2}k`,
+
+        "-vf",
+        scaleFilter,
+
+        "-pix_fmt",
+        "yuv420p",
+
+        "-pass",
+        "2",
+
+        "-passlogfile",
+        "ffmpeg2pass",
+
+        "-c:a",
+        "aac",
+
+        "-b:a",
+        `${settings.audioKbps}k`,
+
+        "-ac",
+        "2",
+
+        "-ar",
+        "44100",
+
+        "-movflags",
+        "+faststart",
+
+        outputName
+      ]);
+
+
+      setStatus(
+        "Vérification du poids final…"
+      );
+
+
+      let data =
+        await ffmpeg.readFile(
+          outputName
+        );
+
+
+      let outputBlob =
+        new Blob(
+          [data.buffer],
+          {
+            type: "video/mp4"
+          }
+        );
+
+
+      /*
+         ======================================================
+         CONTRÔLE FINAL
+
+         Si le résultat dépasse malgré tout
+         45 Mo, on effectue une seconde
+         compression automatiquement.
+         ======================================================
+      */
+
+      if (
+        outputBlob.size >
+        MAX_FILE_MB * MB
+      ) {
+
+        setStatus(
+          "Ajustement automatique : le fichier dépasse légèrement 45 Mo…"
+        );
+
+
+        currentPass = 2;
+
+
+        /*
+           Nouveau bitrate proportionnel
+           à l'écart observé.
+        */
+
+        const ratio =
+          TARGET_BYTES /
+          outputBlob.size;
+
+
+        const correctedVideoKbps =
+          Math.max(
+            70,
+            Math.floor(
+              settings.videoKbps
+              * ratio
+              * 0.96
+            )
+          );
+
+
+        await safeDelete(
+          "compressed2.mp4"
+        );
+
+
+        await ffmpeg.exec([
+
+          "-y",
+
+          "-i",
+          inputName,
+
+          "-map",
+          "0:v:0",
+
+          "-map",
+          "0:a?",
+
+          "-c:v",
+          "libx264",
+
+          "-preset",
+          "veryfast",
+
+          "-b:v",
+          `${correctedVideoKbps}k`,
+
+          "-maxrate",
+          `${Math.floor(correctedVideoKbps * 1.15)}k`,
+
+          "-bufsize",
+          `${correctedVideoKbps * 2}k`,
+
+          "-vf",
+          scaleFilter,
+
+          "-pix_fmt",
+          "yuv420p",
+
+          "-c:a",
+          "aac",
+
+          "-b:a",
+          `${settings.audioKbps}k`,
+
+          "-ac",
+          "2",
+
+          "-ar",
+          "44100",
+
+          "-movflags",
+          "+faststart",
+
+          "compressed2.mp4"
+        ]);
+
+
+        data =
+          await ffmpeg.readFile(
+            "compressed2.mp4"
+          );
+
+
+        outputBlob =
+          new Blob(
+            [data.buffer],
+            {
+              type: "video/mp4"
+            }
+          );
+      }
+
+
+      /* ======================================================
+         RÉSULTAT
+         ====================================================== */
+
+      if (resultObjectURL) {
+
+        URL.revokeObjectURL(
+          resultObjectURL
+        );
+      }
+
+
+      resultObjectURL =
+        URL.createObjectURL(
+          outputBlob
+        );
+
+
+      resultVideo.src =
+        resultObjectURL;
+
+
+      downloadBtn.href =
+        resultObjectURL;
+
+
+      /*
+         Nom du fichier final.
+      */
+
+      const baseName =
+        selectedFile.name
+        .replace(/\.[^/.]+$/, "")
+        .replace(
+          /[^a-zA-Z0-9À-ÿ_-]+/g,
+          "-"
+        );
+
+
+      downloadBtn.download =
+        `${baseName}-45MB.mp4`;
+
+
+      beforeSize.textContent =
+        formatBytes(
+          selectedFile.size
+        );
+
+
+      afterSize.textContent =
+        formatBytes(
+          outputBlob.size
+        );
+
+
+      setProgress(100);
+
+
+      progressTitle.textContent =
+        "Terminé";
+
+
+      if (
+        outputBlob.size <=
+        MAX_FILE_MB * MB
+      ) {
+
+        setStatus(
+          "✓ Conversion réussie — vidéo sous 45 Mo."
+        );
+
+      } else {
+
+        setStatus(
+          "Conversion terminée. La limite n'a pas pu être atteinte exactement avec ce navigateur."
+        );
+      }
+
+
+      result.style.display =
+        "block";
+
+
+      /*
+         Nettoyage mémoire FFmpeg.
+      */
+
+      await safeDelete(
+        inputName
+      );
+
+      await safeDelete(
+        passOne
+      );
+
+      await safeDelete(
+        outputName
+      );
+
+      await safeDelete(
+        "compressed2.mp4"
+      );
+
+      await safeDelete(
+        "ffmpeg2pass-0.log"
+      );
+
+      await safeDelete(
+        "ffmpeg2pass-0.log.mbtree"
+      );
+
+
+    } catch (error) {
+
+      console.error(error);
+
+      showError(
+        "Erreur pendant la conversion.\n\n"
+        + (
+          error?.message
+          || String(error)
+        )
+        + "\n\nSi la vidéo est très lourde, "
+        + "essaie sur un ordinateur avec davantage de mémoire."
+      );
+
+
+      setStatus(
+        "Échec de la conversion."
+      );
+
+
+    } finally {
+
+      convertBtn.disabled =
+        false;
+
+      currentPass =
+        0;
+    }
+  }
+);
+
+
+/* ==========================================================
+   SUPPRESSION FICHIER VIRTUEL
+   ========================================================== */
+
+async function safeDelete(name) {
+
+  if (!ffmpeg) {
+    return;
+  }
+
+  try {
+
+    await ffmpeg.deleteFile(
+      name
+    );
+
+  } catch (_) {
+
+    /*
+       Le fichier n'existe peut-être pas.
+       Ce n'est pas une erreur critique.
+    */
+  }
+}
+
+
+/* ==========================================================
+   PROGRESSION
+   ========================================================== */
+
+function setProgress(value) {
+
+  value =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        value
+      )
+    );
+
+
+  progressBar.style.width =
+    value.toFixed(1) + "%";
+
+
+  progressPercent.textContent =
+    Math.round(value) + " %";
+}
+
+
+function setStatus(text) {
+
+  status.textContent =
+    text;
+}
+
+
+/* ==========================================================
+   ERREURS
+   ========================================================== */
+
+function showError(message) {
+
+  errorBox.textContent =
+    message;
+
+  errorBox.style.display =
+    "block";
+}
+
+
+/* ==========================================================
+   RESET
+   ========================================================== */
+
+function resetResult() {
+
+  errorBox.style.display =
+    "none";
+
+  result.style.display =
+    "none";
+
+  progressSection.style.display =
+    "none";
+
+  warningBox.style.display =
+    "none";
+
+  setProgress(0);
+
+
+  if (resultObjectURL) {
+
+    URL.revokeObjectURL(
+      resultObjectURL
+    );
+
+    resultObjectURL =
+      null;
+  }
+}
+
+</script>
+
+</body>
+</html>
