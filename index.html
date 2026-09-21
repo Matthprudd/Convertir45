@@ -68,119 +68,9 @@ button,.btn{border:0;border-radius:14px;padding:14px 16px;font-weight:900;font-s
 <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4/dist/tus.min.js"></script>
 <script type="module">
 import { FFmpeg } from "https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js";
-import { fetchFile } from "https://unpkg.com/@ffmpeg/util@0.12.2/dist/esm/index.js";
+import { fetchFile, toBlobURL } from "https://unpkg.com/@ffmpeg/util@0.12.2/dist/esm/index.js";
 
-const INLINE_WORKER_SOURCE = `const CORE_VERSION="0.12.10";
-const CORE_URL=\`https://cdn.jsdelivr.net/npm/@ffmpeg/core@\${CORE_VERSION}/dist/umd/ffmpeg-core.js\`;
-const FFMessageType={
-  LOAD:"LOAD", EXEC:"EXEC", FFPROBE:"FFPROBE", WRITE_FILE:"WRITE_FILE",
-  READ_FILE:"READ_FILE", DELETE_FILE:"DELETE_FILE", RENAME:"RENAME",
-  CREATE_DIR:"CREATE_DIR", LIST_DIR:"LIST_DIR", DELETE_DIR:"DELETE_DIR",
-  ERROR:"ERROR", DOWNLOAD:"DOWNLOAD", PROGRESS:"PROGRESS", LOG:"LOG",
-  MOUNT:"MOUNT", UNMOUNT:"UNMOUNT"
-};
-const ERROR_UNKNOWN_MESSAGE_TYPE=new Error("unknown message type");
-const ERROR_NOT_LOADED=new Error("ffmpeg is not loaded, call await ffmpeg.load() first");
-const ERROR_IMPORT_FAILURE=new Error("failed to import ffmpeg-core.js");
 
-let ffmpeg;
-
-const load = async ({ coreURL: _coreURL, wasmURL: _wasmURL, workerURL: _workerURL } = {}) => {
-  const first = !ffmpeg;
-  try {
-    if (!_coreURL) _coreURL = CORE_URL;
-    importScripts(_coreURL);
-  } catch {
-    if (!_coreURL) _coreURL = CORE_URL.replace("/umd/", "/esm/");
-    self.createFFmpegCore = (await import(_coreURL)).default;
-    if (!self.createFFmpegCore) throw ERROR_IMPORT_FAILURE;
-  }
-
-  const coreURL = _coreURL;
-  const wasmURL = _wasmURL || _coreURL.replace(/\\.js$/g, ".wasm");
-  const workerURL = _workerURL || _coreURL.replace(/\\.js$/g, ".worker.js");
-
-  ffmpeg = await self.createFFmpegCore({
-    mainScriptUrlOrBlob: \`\${coreURL}#\${btoa(JSON.stringify({ wasmURL, workerURL }))}\`,
-  });
-
-  ffmpeg.setLogger((data) => self.postMessage({ type: FFMessageType.LOG, data }));
-  ffmpeg.setProgress((data) => self.postMessage({ type: FFMessageType.PROGRESS, data }));
-  return first;
-};
-
-const exec = ({ args, timeout = -1 }) => {
-  ffmpeg.setTimeout(timeout);
-  ffmpeg.exec(...args);
-  const ret = ffmpeg.ret;
-  ffmpeg.reset();
-  return ret;
-};
-
-const ffprobe = ({ args, timeout = -1 }) => {
-  ffmpeg.setTimeout(timeout);
-  ffmpeg.ffprobe(...args);
-  const ret = ffmpeg.ret;
-  ffmpeg.reset();
-  return ret;
-};
-
-const writeFile = ({ path, data }) => {
-  ffmpeg.FS.writeFile(path, data);
-  return true;
-};
-const readFile = ({ path, encoding }) => ffmpeg.FS.readFile(path, { encoding });
-const deleteFile = ({ path }) => { ffmpeg.FS.unlink(path); return true; };
-const rename = ({ oldPath, newPath }) => { ffmpeg.FS.rename(oldPath, newPath); return true; };
-const createDir = ({ path }) => { ffmpeg.FS.mkdir(path); return true; };
-const listDir = ({ path }) => ffmpeg.FS.readdir(path).map((name) => {
-  const stat = ffmpeg.FS.stat(\`\${path}/\${name}\`);
-  return { name, isDir: ffmpeg.FS.isDir(stat.mode) };
-});
-const deleteDir = ({ path }) => { ffmpeg.FS.rmdir(path); return true; };
-const mount = ({ fsType, options, mountPoint }) => {
-  const fs = ffmpeg.FS.filesystems[fsType];
-  if (!fs) return false;
-  ffmpeg.FS.mount(fs, options, mountPoint);
-  return true;
-};
-const unmount = ({ mountPoint }) => { ffmpeg.FS.unmount(mountPoint); return true; };
-
-self.onmessage = async ({ data: { id, type, data: _data } }) => {
-  const trans = [];
-  let data;
-  try {
-    if (type !== FFMessageType.LOAD && !ffmpeg) throw ERROR_NOT_LOADED;
-    switch (type) {
-      case FFMessageType.LOAD: data = await load(_data); break;
-      case FFMessageType.EXEC: data = exec(_data); break;
-      case FFMessageType.FFPROBE: data = ffprobe(_data); break;
-      case FFMessageType.WRITE_FILE: data = writeFile(_data); break;
-      case FFMessageType.READ_FILE: data = readFile(_data); break;
-      case FFMessageType.DELETE_FILE: data = deleteFile(_data); break;
-      case FFMessageType.RENAME: data = rename(_data); break;
-      case FFMessageType.CREATE_DIR: data = createDir(_data); break;
-      case FFMessageType.LIST_DIR: data = listDir(_data); break;
-      case FFMessageType.DELETE_DIR: data = deleteDir(_data); break;
-      case FFMessageType.MOUNT: data = mount(_data); break;
-      case FFMessageType.UNMOUNT: data = unmount(_data); break;
-      default: throw ERROR_UNKNOWN_MESSAGE_TYPE;
-    }
-  } catch (e) {
-    self.postMessage({ id, type: FFMessageType.ERROR, data: String(e) });
-    return;
-  }
-  if (data instanceof Uint8Array) trans.push(data.buffer);
-  self.postMessage({ id, type, data }, trans);
-};
-`;
-let INLINE_WORKER_URL = null;
-function getInlineWorkerURL(){
-  if(!INLINE_WORKER_URL){
-    INLINE_WORKER_URL = URL.createObjectURL(new Blob([INLINE_WORKER_SOURCE],{type:"text/javascript"}));
-  }
-  return INLINE_WORKER_URL;
-}
 
 const $=id=>document.getElementById(id);
 const TARGET_MIB=40.5, HARD_MIB=45;
@@ -335,9 +225,16 @@ $("drop").addEventListener("drop",e=>choose(e.dataTransfer.files?.[0]));
 
 async function loadFFmpeg(){
   if(ffmpegReady)return ffmpeg;
-  status("Chargement du moteur FFmpeg…","warn");progress(3);
+
+  status("Chargement du moteur FFmpeg officiel…","warn");
+  progress(3);
+
   ffmpeg=new FFmpeg();
-  ffmpeg.on("progress",({progress:p})=>{if(Number.isFinite(p))progress(10+Math.min(85,p*85))});
+
+  ffmpeg.on("progress",({progress:p})=>{
+    if(Number.isFinite(p))progress(10+Math.min(85,p*85));
+  });
+
   ffmpeg.on("log",({message})=>{
     if(message){
       log(message);
@@ -345,13 +242,29 @@ async function loadFFmpeg(){
     }
   });
 
-  const coreBase="https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm";
+  // Use the official @ffmpeg/ffmpeg worker code, but launch it from a Blob URL
+  // created by this page. This avoids the Android/Vercel cross-origin Worker bug
+  // without maintaining our own copy of the worker protocol.
+  const officialWorker="https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm/worker.js";
+  const workerBootstrap=`import ${JSON.stringify(officialWorker)};`;
+  const classWorkerURL=URL.createObjectURL(
+    new Blob([workerBootstrap],{type:"text/javascript"})
+  );
+
+  // Official ffmpeg.wasm loading pattern: core JS/WASM are converted to blob URLs.
+  const coreBase="https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
+  const coreURL=await toBlobURL(`${coreBase}/ffmpeg-core.js`,"text/javascript");
+  const wasmURL=await toBlobURL(`${coreBase}/ffmpeg-core.wasm`,"application/wasm");
+
   await ffmpeg.load({
-    classWorkerURL:getInlineWorkerURL(),
-    coreURL:`${coreBase}/ffmpeg-core.js`,
-    wasmURL:`${coreBase}/ffmpeg-core.wasm`
+    classWorkerURL,
+    coreURL,
+    wasmURL
   });
-  ffmpegReady=true;progress(8);status("FFmpeg prêt. Analyse de la vidéo…","warn");
+
+  ffmpegReady=true;
+  progress(8);
+  status("FFmpeg prêt. Préparation de la conversion…","warn");
   return ffmpeg;
 }
 
@@ -508,15 +421,132 @@ async function handoffToRapJungle(blob,filename){
   return true;
 }
 
+
+async function nativeBrowserFallback(){
+  if(!selected)throw new Error("Aucune vidéo sélectionnée.");
+
+  const test=document.createElement("video");
+  test.src=URL.createObjectURL(selected);
+  test.preload="auto";
+  test.playsInline=true;
+  test.muted=false;
+
+  await new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>reject(new Error("Le lecteur Android ne peut pas décoder cette vidéo pour le mode de secours.")),15000);
+    test.onloadedmetadata=()=>{clearTimeout(timer);resolve()};
+    test.onerror=()=>{clearTimeout(timer);reject(new Error("Le lecteur Android ne peut pas décoder cette vidéo pour le mode de secours."))};
+    test.load();
+  });
+
+  const mimeCandidates=[
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4',
+    'video/webm;codecs=vp8,opus',
+    'video/webm'
+  ];
+  const mime=mimeCandidates.find(x=>window.MediaRecorder && MediaRecorder.isTypeSupported(x));
+  if(!mime)throw new Error("Aucun encodeur vidéo natif compatible sur ce navigateur.");
+
+  const dur=test.duration||duration;
+  if(!dur||!Number.isFinite(dur))throw new Error("Durée vidéo inconnue.");
+
+  const targetBits=40*1024*1024*8;
+  const totalBps=Math.max(350000,Math.floor(targetBits/dur*0.90));
+  const audioBps=64000;
+  const videoBps=Math.max(260000,totalBps-audioBps);
+
+  let maxW=1280,maxH=720,fps=30;
+  if(videoBps<800000){maxW=854;maxH=480;fps=24}
+  if(videoBps<450000){maxW=640;maxH=360;fps=20}
+
+  const scale=Math.min(1,maxW/test.videoWidth,maxH/test.videoHeight);
+  const outW=Math.max(2,Math.round(test.videoWidth*scale/2)*2);
+  const outH=Math.max(2,Math.round(test.videoHeight*scale/2)*2);
+
+  const canvas=document.createElement("canvas");
+  canvas.width=outW;canvas.height=outH;
+  const ctx=canvas.getContext("2d",{alpha:false});
+  const stream=canvas.captureStream(fps);
+
+  const AC=window.AudioContext||window.webkitAudioContext;
+  const ac=new AC();
+  const mediaSource=ac.createMediaElementSource(test);
+  const dest=ac.createMediaStreamDestination();
+  mediaSource.connect(dest);
+
+  const mixed=new MediaStream([
+    ...stream.getVideoTracks(),
+    ...dest.stream.getAudioTracks()
+  ]);
+
+  const chunks=[];
+  const rec=new MediaRecorder(mixed,{
+    mimeType:mime,
+    videoBitsPerSecond:videoBps,
+    audioBitsPerSecond:audioBps
+  });
+
+  rec.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
+
+  let raf=0;
+  const draw=()=>{
+    if(test.ended)return;
+    if(test.readyState>=2){
+      ctx.fillStyle="#000";ctx.fillRect(0,0,outW,outH);
+      ctx.drawImage(test,0,0,outW,outH);
+      const p=Math.min(99,(test.currentTime/dur)*100);
+      progress(p);
+      status(`Mode de secours Android : ${Math.round(p)} %`,"warn");
+    }
+    raf=requestAnimationFrame(draw);
+  };
+
+  const done=new Promise((resolve,reject)=>{
+    rec.onerror=e=>reject(e.error||new Error("Erreur MediaRecorder"));
+    rec.onstop=()=>resolve(new Blob(chunks,{type:mime}));
+  });
+
+  await ac.resume();
+  rec.start(1000);
+  draw();
+  await test.play();
+
+  await new Promise((resolve,reject)=>{
+    test.onended=resolve;
+    test.onerror=()=>reject(new Error("Erreur pendant la lecture de secours."));
+  });
+
+  cancelAnimationFrame(raf);
+  if(rec.state!=="inactive")rec.stop();
+  const blob=await done;
+
+  mixed.getTracks().forEach(t=>{try{t.stop()}catch{}});
+  try{await ac.close()}catch{}
+  URL.revokeObjectURL(test.src);
+
+  if(blob.size>45*1024*1024){
+    throw new Error(`Le mode de secours a produit ${fmt(blob.size)}, encore au-dessus de 45 Mo.`);
+  }
+  return {blob,mime};
+}
+
 $("convert").onclick=async()=>{
   if(!selected)return;
-  $("convert").disabled=true;$("change").disabled=true;$("download").classList.add("hidden");$("returnRap").classList.add("hidden");$("log").textContent="";
-  try{
-    const ext=safeExt(selected.name), inputName=`input.${ext}`, outputName="converted.mp4";
 
-    // Read the source once. For MP4/MOV/M4V, extract duration directly
-    // from the container BEFORE transferring the bytes to FFmpeg.
-    status("Lecture du fichier vidéo…","warn");progress(5);
+  $("convert").disabled=true;
+  $("change").disabled=true;
+  $("download").classList.add("hidden");
+  $("returnRap").classList.add("hidden");
+  $("log").textContent="";
+
+  try{
+    const ext=safeExt(selected.name);
+    const inputName=`input.${ext}`;
+    const outputName="converted.mp4";
+
+    status("Lecture du fichier vidéo…","warn");
+    progress(4);
+
     let sourceBytes;
     const container=await readContainerDuration(selected);
     if(container.bytes){
@@ -526,61 +556,84 @@ $("convert").onclick=async()=>{
       sourceBytes=new Uint8Array(await selected.arrayBuffer());
     }
 
-    await loadFFmpeg();
-    status("Copie de la vidéo dans le moteur de conversion…","warn");progress(9);
-    await ffmpeg.writeFile(inputName,sourceBytes);
+    let blob=null;
+    let usedNativeFallback=false;
 
-    // Only use FFmpeg probing as a fallback for containers whose duration
-    // cannot be read directly.
-    if(!duration)duration=await probeDuration(inputName);
-    if(!duration || !Number.isFinite(duration) || duration<=0){
-      throw new Error("Impossible de déterminer la durée de cette vidéo.");
-    }
-    $("durStat").textContent=tf(duration);
+    try{
+      await loadFFmpeg();
 
-    let mult=1,blob=null;
-    for(let attempt=1;attempt<=3;attempt++){
+      status("Copie de la vidéo dans FFmpeg…","warn");
+      progress(9);
+
+      // Make a fresh Uint8Array with its own exact-size buffer.
+      // This avoids Android transfer/detached-buffer edge cases.
+      const ffBytes=new Uint8Array(sourceBytes.byteLength);
+      ffBytes.set(sourceBytes);
+      await ffmpeg.writeFile(inputName,ffBytes);
+
+      if(!duration)duration=await probeDuration(inputName);
+      if(!duration||!Number.isFinite(duration)||duration<=0){
+        throw new Error("Durée vidéo inconnue.");
+      }
+      $("durStat").textContent=tf(duration);
+
+      let mult=1;
+      for(let attempt=1;attempt<=3;attempt++){
+        try{await ffmpeg.deleteFile(outputName)}catch{}
+        await encodeAttempt(inputName,outputName,duration,mult);
+        const data=await ffmpeg.readFile(outputName);
+        blob=new Blob([data],{type:"video/mp4"});
+        if(blob.size<=HARD_BYTES)break;
+        mult*=Math.max(.55,(HARD_BYTES/blob.size)*.88);
+        status(`Résultat ${fmt(blob.size)} : nouvelle compression automatique…`,"warn");
+        progress(12);
+      }
+
+      if(!blob||blob.size>HARD_BYTES){
+        throw new Error("La sortie FFmpeg reste au-dessus de 45 Mo.");
+      }
+
+      try{await ffmpeg.deleteFile(inputName)}catch{}
       try{await ffmpeg.deleteFile(outputName)}catch{}
-      await encodeAttempt(inputName,outputName,duration,mult);
-      const data=await ffmpeg.readFile(outputName);
-      blob=new Blob([data],{type:"video/mp4"});
-      if(blob.size<=HARD_BYTES)break;
-      mult*=Math.max(.55,(HARD_BYTES/blob.size)*.88);
-      status(`Résultat ${fmt(blob.size)} : nouvelle compression automatique…`,"warn");
-      progress(12);
+    }catch(ffErr){
+      log("FFmpeg WASM : "+String(ffErr?.message||ffErr));
+      status("FFmpeg WebAssembly a rencontré un problème. Passage automatique au mode de secours Android…","warn");
+      progress(2);
+
+      const native=await nativeBrowserFallback();
+      blob=native.blob;
+      usedNativeFallback=true;
     }
-    if(!blob||blob.size>HARD_BYTES)throw new Error("La vidéo n'a pas pu être ramenée sous 45 Mo après plusieurs ajustements.");
+
+    const filename=`${safeBase(selected.name)}_45Mo.${usedNativeFallback && blob.type.includes("webm")?"webm":"mp4"}`;
 
     if(outURL)URL.revokeObjectURL(outURL);
     outURL=URL.createObjectURL(blob);
-    const filename=`${safeBase(selected.name)}_45Mo.mp4`;
-    $("download").href=outURL;$("download").download=filename;$("download").classList.remove("hidden");
-    progress(100);status(`Conversion terminée : ${fmt(blob.size)}. MP4 H.264/AAC validé.`,"good");
 
-    // If opened by Rap Jungle, upload the converted file automatically
-    // and return with a storage reference. No second file selection is needed.
+    $("download").href=outURL;
+    $("download").download=filename;
+    $("download").classList.remove("hidden");
+
+    progress(100);
+    status(`Conversion terminée : ${fmt(blob.size)}. Fichier prêt pour Rap Jungle.`,"good");
+
     if(RETURN_URL && CHALLENGE_ID){
-      await handoffToRapJungle(blob,filename);
+      if(blob.type!=="video/mp4"){
+        status("Conversion terminée, mais ce navigateur a produit WebM. Télécharge le fichier; l'envoi automatique Rap Jungle exige MP4.","warn");
+      }else{
+        await handoffToRapJungle(blob,filename);
+      }
     }else if(RETURN_URL){
       $("returnRap").href=RETURN_URL;
       $("returnRap").classList.remove("hidden");
     }
 
-    try{await ffmpeg.deleteFile(inputName)}catch{}
-    try{await ffmpeg.deleteFile(outputName)}catch{}
   }catch(e){
-    {
-      const raw=String(e?.message||e||"Erreur inconnue");
-      let msg=raw;
-      if(/failed to import ffmpeg-core\.js/i.test(raw)){
-        msg="Le moteur vidéo FFmpeg n’a pas pu charger. Recharge la page une fois après le déploiement.";
-      }else if(/File could not be read|Code=-1/i.test(raw)){
-        msg="FFmpeg n’a pas pu lire un fichier interne pendant la conversion. Recharge la page et réessaie avec cette version corrigée.";
-      }
-      status("Erreur : "+msg,"bad");
-    }
+    const raw=String(e?.message||e||"Erreur inconnue");
+    status("Erreur : "+raw,"bad");
   }finally{
-    $("convert").disabled=false;$("change").disabled=false;
+    $("convert").disabled=false;
+    $("change").disabled=false;
   }
 };
 </script>
