@@ -65,7 +65,7 @@ button,.btn{border:0;border-radius:14px;padding:14px 16px;font-weight:900;font-s
 </section>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/tus-js-client@4/dist/tus.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script type="module">
 import { FFmpeg } from "https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js";
 import { fetchFile, toBlobURL } from "https://unpkg.com/@ffmpeg/util@0.12.2/dist/esm/index.js";
@@ -82,6 +82,7 @@ const SUPABASE_URL="https://hixkezzjgxfzmymkfyko.supabase.co";
 const SUPABASE_KEY="sb_publishable_5yp_LpH40HLd5C4btrltyw_r7wUrSFS";
 const UPLOAD_ENDPOINT=SUPABASE_URL+"/functions/v1/rj-upload-url";
 const STORAGE_TUS_ENDPOINT=SUPABASE_URL+"/storage/v1/upload/resumable";
+const sb=createClient(SUPABASE_URL,SUPABASE_KEY);
 let selected=null, selectedBytes=null, previewURL=null, outURL=null, ffmpeg=null, ffmpegReady=false, duration=0, sourcePlayable=false;
 let probeCapture=null;
 
@@ -400,41 +401,32 @@ async function createRapUpload(file){
   return j;
 }
 
-function uploadToRapJungle(file,prep){
-  return new Promise((resolve,reject)=>{
-    if(!window.tus?.Upload){
-      reject(new Error("Le module d’envoi vidéo n’a pas chargé."));
-      return;
-    }
-    const upload=new tus.Upload(file,{
-      endpoint:STORAGE_TUS_ENDPOINT,
-      retryDelays:[0,2000,4000,8000,12000],
-      headers:{"x-signature":prep.token},
-      uploadDataDuringCreation:true,
-      removeFingerprintOnSuccess:true,
-      chunkSize:6*1024*1024,
-      metadata:{
-        bucketName:"rap-jungle-submissions",
-        objectName:prep.path,
+async function uploadToRapJungle(file,prep){
+  status("Envoi de la vidéo convertie vers Rap Jungle…","warn");
+  progress(65);
+
+  const {data,error}=await sb.storage
+    .from("rap-jungle-submissions")
+    .uploadToSignedUrl(
+      prep.path,
+      prep.token,
+      file,
+      {
         contentType:file.type||"video/mp4",
         cacheControl:"3600"
-      },
-      onProgress:(done,total)=>{
-        const pct=Math.round((done/total)*100);
-        progress(pct);
-        status(`Envoi automatique vers Rap Jungle : ${pct}%`,"warn");
-      },
-      onError:reject,
-      onSuccess:()=>resolve(true)
-    });
-    upload.start();
-  });
+      }
+    );
+
+  if(error)throw error;
+
+  progress(100);
+  return true;
 }
 
 async function handoffToRapJungle(blob,filename){
   if(!RETURN_URL||!CHALLENGE_ID)return false;
   const file=new File([blob],filename,{type:"video/mp4",lastModified:Date.now()});
-  status("Conversion terminée. Envoi automatique vers Rap Jungle…","warn");
+  status("Conversion terminée. Envoi sécurisé vers Rap Jungle…","warn");
   progress(0);
 
   const prep=await createRapUpload(file);
