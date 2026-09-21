@@ -203,6 +203,87 @@ function log(t){$("log").classList.remove("hidden");$("log").textContent+=(($("l
 function safeExt(name){const m=/\.([a-z0-9]+)$/i.exec(name||"");return m?m[1].toLowerCase():"bin"}
 function safeBase(name){return (name||"video").replace(/\.[^.]+$/,"").replace(/[^\w-]+/g,"_").slice(0,60)||"video"}
 
+function u32(v,o){return v.getUint32(o,false)}
+function u64(v,o){
+  const hi=v.getUint32(o,false), lo=v.getUint32(o+4,false);
+  return hi*4294967296+lo;
+}
+function boxType(v,o){
+  return String.fromCharCode(v.getUint8(o),v.getUint8(o+1),v.getUint8(o+2),v.getUint8(o+3));
+}
+function parseMp4DurationBytes(bytes){
+  try{
+    const v=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+    const containers=new Set(["moov","trak","mdia","minf","stbl","edts","udta","meta","ilst","moof","traf"]);
+    let found=0;
+
+    function walk(start,end,depth){
+      if(depth>10)return;
+      let p=start;
+      while(p+8<=end){
+        let size=u32(v,p);
+        const type=boxType(v,p+4);
+        let header=8;
+
+        if(size===1){
+          if(p+16>end)return;
+          size=u64(v,p+8);
+          header=16;
+        }else if(size===0){
+          size=end-p;
+        }
+
+        if(!Number.isFinite(size) || size<header || p+size>end) return;
+
+        const payload=p+header;
+        const boxEnd=p+size;
+
+        if(type==="mvhd"){
+          const version=v.getUint8(payload);
+          let timescale,dur;
+          if(version===1){
+            if(payload+32<=boxEnd){
+              timescale=u32(v,payload+20);
+              dur=u64(v,payload+24);
+            }
+          }else{
+            if(payload+20<=boxEnd){
+              timescale=u32(v,payload+12);
+              dur=u32(v,payload+16);
+            }
+          }
+          if(timescale>0 && dur>0){
+            const sec=dur/timescale;
+            if(Number.isFinite(sec)&&sec>0)found=sec;
+          }
+        }
+
+        if(!found && containers.has(type)){
+          let childStart=payload;
+          if(type==="meta") childStart+=4; // FullBox version/flags before children
+          if(childStart<boxEnd)walk(childStart,boxEnd,depth+1);
+        }
+        if(found)return;
+        p=boxEnd;
+      }
+    }
+
+    walk(0,v.byteLength,0);
+    return found||0;
+  }catch{
+    return 0;
+  }
+}
+
+async function readContainerDuration(file){
+  // MP4/MOV/M4V duration can be read from the mvhd atom without decoding the video.
+  const ext=safeExt(file.name);
+  if(!["mp4","mov","m4v","3gp","3g2"].includes(ext))return {duration:0,bytes:null};
+  const ab=await file.arrayBuffer();
+  const bytes=new Uint8Array(ab);
+  return {duration:parseMp4DurationBytes(bytes),bytes};
+}
+
 async function tryBrowserPreview(file){
   return new Promise(resolve=>{
     if(previewURL)URL.revokeObjectURL(previewURL);
@@ -224,15 +305,26 @@ async function choose(file){
   $("meta").classList.remove("hidden");$("stats").classList.remove("hidden");
   $("sizeStat").textContent=fmt(file.size);$("durStat").textContent="Analyse…";
   $("meta").innerHTML=`<strong>${file.name}</strong><br>${fmt(file.size)} · lecture des métadonnées en cours`;
+
+  // Read duration from the MP4/MOV container itself first.
+  // This works even when Android/Chrome cannot decode the preview.
+  try{
+    const c=await readContainerDuration(file);
+    if(c.duration>0)duration=c.duration;
+  }catch{}
+
   const p=await tryBrowserPreview(file);
-  sourcePlayable=p.ok;duration=p.d||0;
+  sourcePlayable=p.ok;
+  if(!duration && p.d>0)duration=p.d;
+
+  if(duration)$("durStat").textContent=tf(duration);
+
   if(sourcePlayable){
-    $("durStat").textContent=tf(duration);
-    status("La vidéo est lisible par le navigateur. Tu peux la convertir ou l'envoyer si elle est déjà assez petite.","good");
+    status("Vidéo détectée. Convertir45 peut la normaliser sous 45 Mo.","good");
   }else{
     $("preview").classList.add("hidden");
-    $("durStat").textContent="FFmpeg";
-    status("Le navigateur ne peut pas lire cette vidéo. Ce n'est plus bloquant : Convertir45 va l'analyser directement avec FFmpeg.","warn");
+    $("durStat").textContent=duration?tf(duration):"Analyse FFmpeg";
+    status("Le lecteur Android ne peut pas afficher cette vidéo, mais Convertir45 peut continuer avec le fichier brut.","warn");
   }
 }
 $("drop").onclick=()=>$("file").click();$("change").onclick=()=>$("file").click();
@@ -420,12 +512,30 @@ $("convert").onclick=async()=>{
   if(!selected)return;
   $("convert").disabled=true;$("change").disabled=true;$("download").classList.add("hidden");$("returnRap").classList.add("hidden");$("log").textContent="";
   try{
-    await loadFFmpeg();
     const ext=safeExt(selected.name), inputName=`input.${ext}`, outputName="converted.mp4";
-    status("Copie de la vidéo dans le moteur de conversion…","warn");progress(9);
-    await ffmpeg.writeFile(inputName,await fetchFile(selected));
 
-    duration=duration||await probeDuration(inputName);
+    // Read the source once. For MP4/MOV/M4V, extract duration directly
+    // from the container BEFORE transferring the bytes to FFmpeg.
+    status("Lecture du fichier vidéo…","warn");progress(5);
+    let sourceBytes;
+    const container=await readContainerDuration(selected);
+    if(container.bytes){
+      sourceBytes=container.bytes;
+      if(!duration && container.duration>0)duration=container.duration;
+    }else{
+      sourceBytes=new Uint8Array(await selected.arrayBuffer());
+    }
+
+    await loadFFmpeg();
+    status("Copie de la vidéo dans le moteur de conversion…","warn");progress(9);
+    await ffmpeg.writeFile(inputName,sourceBytes);
+
+    // Only use FFmpeg probing as a fallback for containers whose duration
+    // cannot be read directly.
+    if(!duration)duration=await probeDuration(inputName);
+    if(!duration || !Number.isFinite(duration) || duration<=0){
+      throw new Error("Impossible de déterminer la durée de cette vidéo.");
+    }
     $("durStat").textContent=tf(duration);
 
     let mult=1,blob=null;
@@ -465,7 +575,7 @@ $("convert").onclick=async()=>{
       if(/failed to import ffmpeg-core\.js/i.test(raw)){
         msg="Le moteur vidéo FFmpeg n’a pas pu charger. Recharge la page une fois après le déploiement.";
       }else if(/File could not be read|Code=-1/i.test(raw)){
-        msg="FFmpeg a ouvert la vidéo, mais l’ancienne méthode de lecture de durée a échoué. Cette version corrige ce point sans fichier temporaire.";
+        msg="FFmpeg n’a pas pu lire un fichier interne pendant la conversion. Recharge la page et réessaie avec cette version corrigée.";
       }
       status("Erreur : "+msg,"bad");
     }
