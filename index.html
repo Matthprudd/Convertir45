@@ -82,7 +82,7 @@ const SUPABASE_URL="https://hixkezzjgxfzmymkfyko.supabase.co";
 const SUPABASE_KEY="sb_publishable_5yp_LpH40HLd5C4btrltyw_r7wUrSFS";
 const UPLOAD_ENDPOINT=SUPABASE_URL+"/functions/v1/rj-upload-url";
 const STORAGE_TUS_ENDPOINT=SUPABASE_URL+"/storage/v1/upload/resumable";
-const sb=createClient(SUPABASE_URL,SUPABASE_KEY);
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let selected=null, selectedBytes=null, previewURL=null, outURL=null, ffmpeg=null, ffmpegReady=false, duration=0, sourcePlayable=false;
 let probeCapture=null;
 
@@ -385,6 +385,23 @@ async function encodeAttempt(inputName,outputName,dur,mult=1){
 }
 
 
+
+async function checkRapJungleBridge(){
+  if(!RETURN_URL || !CHALLENGE_ID)return;
+  try{
+    const r=await fetch(UPLOAD_ENDPOINT,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY},
+      body:JSON.stringify({action:"health",challengeId:CHALLENGE_ID})
+    });
+    const j=await r.json();
+    if(!r.ok || !j.ok)throw new Error(j.error||"Connexion impossible");
+    status(`Connexion Rap Jungle / Supabase OK · limite ${(j.maxBytes/1024/1024).toFixed(0)} Mo`,"good");
+  }catch(e){
+    status("Connexion Rap Jungle / Supabase indisponible : "+(e?.message||String(e)),"bad");
+  }
+}
+
 async function createRapUpload(file){
   if(!CHALLENGE_ID)throw new Error("Challenge Rap Jungle manquant dans le lien de conversion.");
   const r=await fetch(UPLOAD_ENDPOINT,{
@@ -417,7 +434,10 @@ async function uploadToRapJungle(file,prep){
       }
     );
 
-  if(error)throw error;
+  if(error){
+    const msg=String(error.message||error);
+    throw new Error("Échec du dépôt Supabase : "+msg);
+  }
 
   progress(100);
   return true;
@@ -425,7 +445,7 @@ async function uploadToRapJungle(file,prep){
 
 async function handoffToRapJungle(blob,filename){
   if(!RETURN_URL||!CHALLENGE_ID)return false;
-  const file=new File([blob],filename,{type:"video/mp4",lastModified:Date.now()});
+  const file=new File([blob],filename,{type:blob.type||"video/mp4",lastModified:Date.now()});
   status("Conversion terminée. Envoi sécurisé vers Rap Jungle…","warn");
   progress(0);
 
@@ -672,6 +692,8 @@ $("convert").onclick=async()=>{
     $("change").disabled=false;
   }
 };
+
+checkRapJungleBridge();
 </script>
 </body>
 </html>
