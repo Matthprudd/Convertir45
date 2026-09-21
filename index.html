@@ -193,6 +193,7 @@ const SUPABASE_KEY="sb_publishable_5yp_LpH40HLd5C4btrltyw_r7wUrSFS";
 const UPLOAD_ENDPOINT=SUPABASE_URL+"/functions/v1/rj-upload-url";
 const STORAGE_TUS_ENDPOINT=SUPABASE_URL+"/storage/v1/upload/resumable";
 let selected=null, previewURL=null, outURL=null, ffmpeg=null, ffmpegReady=false, duration=0, sourcePlayable=false;
+let probeCapture=null;
 
 function fmt(b){return (b/1024/1024).toFixed(1)+" Mo"}
 function tf(s){if(!Number.isFinite(s)||s<=0)return "—";const m=Math.floor(s/60),r=Math.round(s%60);return `${m}:${String(r).padStart(2,"0")}`}
@@ -212,7 +213,7 @@ async function tryBrowserPreview(file){
     const finish=(ok,d=0)=>{if(done)return;done=true;resolve({ok,d})};
     v.onloadedmetadata=()=>finish(v.videoWidth>0&&v.videoHeight>0,Number(v.duration)||0);
     v.onerror=()=>finish(false,0);
-    setTimeout(()=>finish(false,0),5000);
+    setTimeout(()=>finish(false,0),20000);
   });
 }
 
@@ -222,7 +223,7 @@ async function choose(file){
   $("convert").disabled=false;$("change").disabled=false;
   $("meta").classList.remove("hidden");$("stats").classList.remove("hidden");
   $("sizeStat").textContent=fmt(file.size);$("durStat").textContent="Analyse…";
-  $("meta").innerHTML=`<strong>${file.name}</strong><br>${fmt(file.size)} · analyse du codec en cours`;
+  $("meta").innerHTML=`<strong>${file.name}</strong><br>${fmt(file.size)} · lecture des métadonnées en cours`;
   const p=await tryBrowserPreview(file);
   sourcePlayable=p.ok;duration=p.d||0;
   if(sourcePlayable){
@@ -245,7 +246,12 @@ async function loadFFmpeg(){
   status("Chargement du moteur FFmpeg…","warn");progress(3);
   ffmpeg=new FFmpeg();
   ffmpeg.on("progress",({progress:p})=>{if(Number.isFinite(p))progress(10+Math.min(85,p*85))});
-  ffmpeg.on("log",({message})=>{if(message)log(message)});
+  ffmpeg.on("log",({message})=>{
+    if(message){
+      log(message);
+      if(probeCapture)probeCapture.push(String(message));
+    }
+  });
 
   const coreBase="https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm";
   await ffmpeg.load({
@@ -258,15 +264,58 @@ async function loadFFmpeg(){
 }
 
 async function probeDuration(inputName){
-  const out="duration.txt";
-  try{await ffmpeg.deleteFile(out)}catch{}
-  await ffmpeg.ffprobe(["-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1",inputName,"-o",out]);
-  const data=await ffmpeg.readFile(out);
-  const text=new TextDecoder().decode(data).trim();
-  const n=Number(text);
-  try{await ffmpeg.deleteFile(out)}catch{}
-  if(Number.isFinite(n)&&n>0)return n;
-  throw new Error("Impossible de déterminer la durée de la vidéo.");
+  // ffmpeg.wasm's ffprobe output is emitted through the logger.
+  // Do NOT try to read a duration.txt file: that is what caused
+  // "File could not be read! Code=-1" on Android.
+  probeCapture=[];
+  try{
+    const code=await ffmpeg.ffprobe([
+      "-v","error",
+      "-show_entries","format=duration",
+      "-of","default=noprint_wrappers=1:nokey=1",
+      inputName
+    ]);
+
+    const lines=probeCapture.slice();
+    // First try a standalone numeric duration emitted by ffprobe.
+    for(const line of lines){
+      const s=String(line).trim();
+      if(/^\d+(?:\.\d+)?$/.test(s)){
+        const n=Number(s);
+        if(Number.isFinite(n)&&n>0)return n;
+      }
+    }
+
+    // Fallback: parse a normal FFmpeg "Duration: HH:MM:SS.xx" line.
+    for(const line of lines){
+      const mm=/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/i.exec(String(line));
+      if(mm){
+        const n=Number(mm[1])*3600+Number(mm[2])*60+Number(mm[3]);
+        if(Number.isFinite(n)&&n>0)return n;
+      }
+    }
+  }finally{
+    probeCapture=null;
+  }
+
+  // Second fallback: ask ffmpeg itself to open only the beginning of the file.
+  // This is quick and its log normally contains the duration header.
+  probeCapture=[];
+  try{
+    await ffmpeg.exec(["-i",inputName,"-t","0.01","-f","null","-"]);
+    const lines=probeCapture.slice();
+    for(const line of lines){
+      const mm=/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/i.exec(String(line));
+      if(mm){
+        const n=Number(mm[1])*3600+Number(mm[2])*60+Number(mm[3]);
+        if(Number.isFinite(n)&&n>0)return n;
+      }
+    }
+  }finally{
+    probeCapture=null;
+  }
+
+  throw new Error("Impossible de lire la durée de cette vidéo.");
 }
 
 function profileForBitrate(kbps){
@@ -384,7 +433,7 @@ $("convert").onclick=async()=>{
       try{await ffmpeg.deleteFile(outputName)}catch{}
       await encodeAttempt(inputName,outputName,duration,mult);
       const data=await ffmpeg.readFile(outputName);
-      blob=new Blob([data.buffer],{type:"video/mp4"});
+      blob=new Blob([data],{type:"video/mp4"});
       if(blob.size<=HARD_BYTES)break;
       mult*=Math.max(.55,(HARD_BYTES/blob.size)*.88);
       status(`Résultat ${fmt(blob.size)} : nouvelle compression automatique…`,"warn");
@@ -412,9 +461,12 @@ $("convert").onclick=async()=>{
   }catch(e){
     {
       const raw=String(e?.message||e||"Erreur inconnue");
-      const msg=/failed to import ffmpeg-core\.js/i.test(raw)
-        ?"Le moteur vidéo FFmpeg n’a pas pu charger. Cette version utilise maintenant directement le module ESM officiel; recharge la page une fois après le déploiement."
-        :raw;
+      let msg=raw;
+      if(/failed to import ffmpeg-core\.js/i.test(raw)){
+        msg="Le moteur vidéo FFmpeg n’a pas pu charger. Recharge la page une fois après le déploiement.";
+      }else if(/File could not be read|Code=-1/i.test(raw)){
+        msg="FFmpeg a ouvert la vidéo, mais l’ancienne méthode de lecture de durée a échoué. Cette version corrige ce point sans fichier temporaire.";
+      }
       status("Erreur : "+msg,"bad");
     }
   }finally{
