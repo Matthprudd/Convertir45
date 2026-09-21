@@ -67,8 +67,8 @@ button,.btn{border:0;border-radius:14px;padding:14px 16px;font-weight:900;font-s
 
 <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4/dist/tus.min.js"></script>
 <script type="module">
-import { FFmpeg } from "https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js";
-import { fetchFile, toBlobURL } from "https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js";
+import { FFmpeg } from "https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js";
+import { fetchFile } from "https://unpkg.com/@ffmpeg/util@0.12.2/dist/esm/index.js";
 
 const INLINE_WORKER_SOURCE = `const CORE_VERSION="0.12.10";
 const CORE_URL=\`https://cdn.jsdelivr.net/npm/@ffmpeg/core@\${CORE_VERSION}/dist/umd/ffmpeg-core.js\`;
@@ -247,11 +247,11 @@ async function loadFFmpeg(){
   ffmpeg.on("progress",({progress:p})=>{if(Number.isFinite(p))progress(10+Math.min(85,p*85))});
   ffmpeg.on("log",({message})=>{if(message)log(message)});
 
-  const coreBase="https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
+  const coreBase="https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm";
   await ffmpeg.load({
     classWorkerURL:getInlineWorkerURL(),
-    coreURL:await toBlobURL(`${coreBase}/ffmpeg-core.js`,"text/javascript"),
-    wasmURL:await toBlobURL(`${coreBase}/ffmpeg-core.wasm`,"application/wasm")
+    coreURL:`${coreBase}/ffmpeg-core.js`,
+    wasmURL:`${coreBase}/ffmpeg-core.wasm`
   });
   ffmpegReady=true;progress(8);status("FFmpeg prêt. Analyse de la vidéo…","warn");
   return ffmpeg;
@@ -410,7 +410,13 @@ $("convert").onclick=async()=>{
     try{await ffmpeg.deleteFile(inputName)}catch{}
     try{await ffmpeg.deleteFile(outputName)}catch{}
   }catch(e){
-    status("Erreur : "+(e?.message||String(e)),"bad");
+    {
+      const raw=String(e?.message||e||"Erreur inconnue");
+      const msg=/failed to import ffmpeg-core\.js/i.test(raw)
+        ?"Le moteur vidéo FFmpeg n’a pas pu charger. Cette version utilise maintenant directement le module ESM officiel; recharge la page une fois après le déploiement."
+        :raw;
+      status("Erreur : "+msg,"bad");
+    }
   }finally{
     $("convert").disabled=false;$("change").disabled=false;
   }
