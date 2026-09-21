@@ -1,1833 +1,420 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <title>MEYDEN Video Compressor — 45 Mo</title>
-
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background:
-        radial-gradient(circle at top, #252525 0%, #0d0d0d 45%, #050505 100%);
-      color: #ffffff;
-      font-family: Arial, Helvetica, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      padding: 30px 15px;
-    }
-
-    .app {
-      width: 100%;
-      max-width: 850px;
-      background: rgba(18, 18, 18, 0.97);
-      border: 1px solid #333;
-      border-radius: 24px;
-      padding: 28px;
-      box-shadow: 0 25px 80px rgba(0,0,0,.65);
-    }
-
-    h1 {
-      margin: 0;
-      font-size: clamp(30px, 6vw, 55px);
-      line-height: 1;
-      text-align: center;
-      letter-spacing: -2px;
-    }
-
-    .brand {
-      color: #ffffff;
-    }
-
-    .accent {
-      color: #ff7a00;
-    }
-
-    .subtitle {
-      text-align: center;
-      color: #aaa;
-      margin: 12px 0 28px;
-      line-height: 1.5;
-    }
-
-    .limit {
-      display: inline-block;
-      background: #ff7a00;
-      color: #000;
-      padding: 7px 12px;
-      border-radius: 999px;
-      font-weight: 900;
-      margin-top: 10px;
-    }
-
-    .drop-zone {
-      border: 2px dashed #555;
-      border-radius: 20px;
-      padding: 38px 20px;
-      text-align: center;
-      transition: .25s ease;
-      cursor: pointer;
-      background: #111;
-    }
-
-    .drop-zone:hover,
-    .drop-zone.drag {
-      border-color: #ff7a00;
-      background: #171717;
-      transform: translateY(-2px);
-    }
-
-    .drop-icon {
-      font-size: 60px;
-      margin-bottom: 12px;
-    }
-
-    .drop-title {
-      font-size: 23px;
-      font-weight: bold;
-    }
-
-    .drop-text {
-      color: #999;
-      margin-top: 8px;
-    }
-
-    input[type="file"] {
-      display: none;
-    }
-
-    .button {
-      width: 100%;
-      border: none;
-      padding: 17px 20px;
-      border-radius: 14px;
-      font-size: 17px;
-      font-weight: 900;
-      cursor: pointer;
-      transition: .2s ease;
-      margin-top: 16px;
-    }
-
-    .button-primary {
-      background: #ff7a00;
-      color: #050505;
-    }
-
-    .button-primary:hover {
-      transform: scale(1.01);
-      background: #ff8f25;
-    }
-
-    .button:disabled {
-      opacity: .4;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .info {
-      display: none;
-      margin-top: 25px;
-      background: #0b0b0b;
-      border: 1px solid #292929;
-      border-radius: 18px;
-      overflow: hidden;
-    }
-
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 15px;
-      padding: 14px 18px;
-      border-bottom: 1px solid #222;
-    }
-
-    .info-row:last-child {
-      border-bottom: none;
-    }
-
-    .info-label {
-      color: #8d8d8d;
-    }
-
-    .info-value {
-      text-align: right;
-      font-weight: bold;
-    }
-
-    .video-box {
-      margin-top: 22px;
-      display: none;
-    }
-
-    video {
-      width: 100%;
-      max-height: 430px;
-      background: #000;
-      border-radius: 16px;
-    }
-
-    .progress-section {
-      display: none;
-      margin-top: 25px;
-    }
-
-    .progress-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-
-    .progress-title {
-      font-weight: bold;
-    }
-
-    .progress-percent {
-      color: #ff7a00;
-      font-size: 20px;
-      font-weight: 900;
-    }
-
-    .progress-shell {
-      height: 19px;
-      background: #272727;
-      border-radius: 999px;
-      overflow: hidden;
-    }
-
-    .progress-bar {
-      width: 0%;
-      height: 100%;
-      background: linear-gradient(
-        90deg,
-        #ff6500,
-        #ff9d00
-      );
-      transition: width .25s linear;
-    }
-
-    .status {
-      margin-top: 12px;
-      color: #bcbcbc;
-      text-align: center;
-      min-height: 25px;
-    }
-
-    .result {
-      display: none;
-      margin-top: 26px;
-      background: #101a11;
-      border: 1px solid #27542b;
-      border-radius: 18px;
-      padding: 20px;
-    }
-
-    .success {
-      color: #59e866;
-      font-size: 24px;
-      font-weight: 900;
-      margin-bottom: 18px;
-      text-align: center;
-    }
-
-    .comparison {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      gap: 12px;
-      align-items: center;
-      text-align: center;
-      margin: 18px 0;
-    }
-
-    .size-box {
-      background: #080808;
-      padding: 18px 8px;
-      border-radius: 14px;
-    }
-
-    .size-number {
-      font-size: 24px;
-      font-weight: 900;
-    }
-
-    .size-label {
-      color: #888;
-      margin-top: 4px;
-      font-size: 13px;
-    }
-
-    .arrow {
-      font-size: 30px;
-      color: #ff7a00;
-    }
-
-    .download {
-      display: block;
-      text-decoration: none;
-      text-align: center;
-      background: #ffffff;
-      color: #000000;
-      border-radius: 14px;
-      padding: 17px;
-      font-weight: 900;
-      margin-top: 16px;
-    }
-
-    .download:hover {
-      background: #ff7a00;
-    }
-
-    .warning {
-      display: none;
-      background: #301c00;
-      border: 1px solid #7c4800;
-      color: #ffb75e;
-      border-radius: 14px;
-      padding: 14px;
-      margin-top: 18px;
-      line-height: 1.5;
-    }
-
-    .error {
-      display: none;
-      background: #2a1010;
-      border: 1px solid #6c2424;
-      color: #ff8181;
-      border-radius: 14px;
-      padding: 14px;
-      margin-top: 18px;
-      white-space: pre-wrap;
-    }
-
-    .footer {
-      margin-top: 30px;
-      color: #606060;
-      font-size: 12px;
-      text-align: center;
-    }
-
-    @media (max-width: 600px) {
-      .app {
-        padding: 18px;
-        border-radius: 18px;
-      }
-
-      .comparison {
-        grid-template-columns: 1fr;
-      }
-
-      .arrow {
-        transform: rotate(90deg);
-      }
-
-      .info-row {
-        flex-direction: column;
-        gap: 4px;
-      }
-
-      .info-value {
-        text-align: left;
-      }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#08110b">
+<title>Convertir45 — Rap Jungle</title>
+<style>
+:root{--bg:#07100a;--panel:#111b15;--line:#33583d;--text:#fff;--muted:#b8c5ba;--green:#3e9955;--orange:#ef8f12;--orange2:#ffad2f;--bad:#a9473c;--good:#54c77a}
+*{box-sizing:border-box}body{margin:0;color:var(--text);font-family:Arial,Helvetica,sans-serif;background:radial-gradient(circle at 10% 20%,rgba(76,175,80,.14),transparent 22%),radial-gradient(circle at 90% 10%,rgba(239,143,18,.10),transparent 22%),linear-gradient(180deg,#07100a,#0b1510 45%,#08110b);min-height:100vh;padding:14px}
+.wrap{max-width:860px;margin:auto}header,.card{background:linear-gradient(180deg,rgba(17,29,21,.97),rgba(10,18,13,.97));border:1px solid var(--line);border-radius:22px;padding:18px;margin:14px 0;box-shadow:0 18px 45px rgba(0,0,0,.25)}
+.brand{font-size:clamp(36px,9vw,68px);font-weight:1000;line-height:.9}.brand span{color:var(--orange)}.sub,.small{color:var(--muted);line-height:1.45}.small{font-size:13px}
+.drop{border:2px dashed #487354;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;background:#0b150e}.drop.drag{border-color:var(--orange);background:#171007}.drop strong{display:block;font-size:1.15rem;margin-bottom:6px}
+video{display:block;width:100%;aspect-ratio:16/9;max-height:470px;object-fit:contain;background:#000;border-radius:16px;margin-top:14px;border:1px solid #31503a}.hidden{display:none!important}
+.info{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#0b130e;line-height:1.45}.good{border-color:#387c4b;color:#bcefc8}.warn{border-color:#8c641d;color:#ffd79b}.bad{border-color:#8e3d35;color:#ffc4bd}
+.row{display:flex;gap:10px;flex-wrap:wrap}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.stat{padding:11px;border-radius:13px;border:1px solid var(--line);background:#0b130e;text-align:center}.stat b{display:block;font-size:1.1rem}.stat span{font-size:11px;color:var(--muted)}
+button,.btn{border:0;border-radius:14px;padding:14px 16px;font-weight:900;font-size:15px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}.primary,.btn{background:linear-gradient(180deg,var(--orange2),var(--orange));color:#171006}.secondary{background:linear-gradient(180deg,#2a6f3d,#1b4f2a);color:#fff}button:disabled{opacity:.5;cursor:not-allowed}
+.progress{height:14px;background:#09100c;border:1px solid #365b40;border-radius:999px;overflow:hidden;margin-top:12px}.bar{height:100%;width:0;background:linear-gradient(90deg,var(--green),var(--orange));transition:width .2s}
+.log{margin-top:12px;white-space:pre-wrap;font:12px/1.4 monospace;color:#aeb9b0;background:#070b08;border:1px solid #263f2d;border-radius:12px;padding:10px;max-height:180px;overflow:auto}
+@media(max-width:580px){body{padding:9px}header,.card{padding:14px}.stats{grid-template-columns:1fr}button,.btn{width:100%}}
+</style>
 </head>
-
 <body>
+<div class="wrap">
+<header>
+  <div class="brand">CONVERTIR<span>45</span></div>
+  <div class="sub">Rap Jungle × MEYDEN — Convertir45 normalise la vidéo sous 45 Mo, la téléverse automatiquement vers Rap Jungle et retourne ensuite le participant au formulaire.</div>
+</header>
 
-<div class="app">
-
-  <h1>
-    <span class="brand">VIDEO</span>
-    <span class="accent">45</span>
-  </h1>
-
-  <div class="subtitle">
-    Compresseur vidéo automatique
-    <br>
-    <span class="limit">OBJECTIF ≤ 45 Mo</span>
+<section class="card">
+  <input id="file" type="file" hidden accept="video/*,.mov,.m4v,.mkv,.avi,.webm,.mts,.m2ts,.3gp,.ts">
+  <div id="drop" class="drop">
+    <strong>Choisir une vidéo</strong>
+    <div class="small">Si l’image ne peut pas être lue par Chrome, ce n’est pas bloquant : FFmpeg analyse directement le fichier.</div>
   </div>
 
-  <div id="dropZone" class="drop-zone">
-    <div class="drop-icon">🎬</div>
+  <video id="preview" class="hidden" controls playsinline preload="metadata"></video>
 
-    <div class="drop-title">
-      Dépose ta vidéo ici
-    </div>
-
-    <div class="drop-text">
-      ou touche pour sélectionner un fichier
-    </div>
-
-    <input
-      id="fileInput"
-      type="file"
-      accept="video/*,.mov,.mkv,.avi,.webm,.m4v"
-    >
+  <div id="meta" class="info hidden"></div>
+  <div id="stats" class="stats hidden">
+    <div class="stat"><b id="sizeStat">—</b><span>TAILLE SOURCE</span></div>
+    <div class="stat"><b id="durStat">—</b><span>DURÉE</span></div>
+    <div class="stat"><b>≤ 45 Mo</b><span>OBJECTIF</span></div>
   </div>
 
-  <div id="warning" class="warning"></div>
+  <div id="status" class="info hidden"></div>
+  <div id="prog" class="progress hidden"><div id="bar" class="bar"></div></div>
+  <div id="log" class="log hidden"></div>
 
-  <div id="info" class="info">
-
-    <div class="info-row">
-      <div class="info-label">Fichier</div>
-      <div id="fileName" class="info-value">—</div>
-    </div>
-
-    <div class="info-row">
-      <div class="info-label">Poids original</div>
-      <div id="originalSize" class="info-value">—</div>
-    </div>
-
-    <div class="info-row">
-      <div class="info-label">Durée</div>
-      <div id="durationText" class="info-value">—</div>
-    </div>
-
-    <div class="info-row">
-      <div class="info-label">Résolution originale</div>
-      <div id="resolutionText" class="info-value">—</div>
-    </div>
-
-    <div class="info-row">
-      <div class="info-label">Bitrate vidéo calculé</div>
-      <div id="bitrateText" class="info-value">—</div>
-    </div>
-
-    <div class="info-row">
-      <div class="info-label">Sortie prévue</div>
-      <div id="outputProfile" class="info-value">—</div>
-    </div>
-
+  <div class="row" style="margin-top:14px">
+    <button id="convert" class="primary" disabled>CONVERTIR À 45 MO</button>
+    <button id="change" class="secondary" disabled>CHANGER DE VIDÉO</button>
+    <a id="download" class="btn hidden">TÉLÉCHARGER LA VIDÉO CONVERTIE</a>
+    <a id="returnRap" class="btn hidden" style="background:linear-gradient(180deg,#2a6f3d,#1b4f2a);color:#fff">RETOURNER À RAP JUNGLE</a>
   </div>
 
-  <div id="videoBox" class="video-box">
-    <video
-      id="preview"
-      controls
-      playsinline
-      preload="metadata"
-    ></video>
+  <div class="info" style="margin-top:14px">
+    <strong>MODE RAP JUNGLE</strong><br>
+    <span class="small">
+      Quand cette page est ouverte depuis Rap Jungle avec les paramètres <code>?return=...</code> et <code>&challenge=...</code>,
+      la vidéo convertie est automatiquement envoyée vers le stockage Rap Jungle puis le participant est ramené à son formulaire.
+      Si la page est ouverte seule, elle fonctionne comme convertisseur autonome avec téléchargement manuel.
+    </span>
   </div>
-
-  <button
-    id="convertBtn"
-    class="button button-primary"
-    disabled
-  >
-    COMPRESSER LA VIDÉO
-  </button>
-
-  <div
-    id="progressSection"
-    class="progress-section"
-  >
-
-    <div class="progress-header">
-      <div
-        id="progressTitle"
-        class="progress-title"
-      >
-        Préparation
-      </div>
-
-      <div
-        id="progressPercent"
-        class="progress-percent"
-      >
-        0 %
-      </div>
-    </div>
-
-    <div class="progress-shell">
-      <div
-        id="progressBar"
-        class="progress-bar"
-      ></div>
-    </div>
-
-    <div
-      id="status"
-      class="status"
-    >
-      —
-    </div>
-
-  </div>
-
-  <div id="result" class="result">
-
-    <div class="success">
-      ✓ VIDÉO OPTIMISÉE
-    </div>
-
-    <div class="comparison">
-
-      <div class="size-box">
-        <div
-          id="beforeSize"
-          class="size-number"
-        >
-          —
-        </div>
-
-        <div class="size-label">
-          AVANT
-        </div>
-      </div>
-
-      <div class="arrow">
-        ➜
-      </div>
-
-      <div class="size-box">
-        <div
-          id="afterSize"
-          class="size-number"
-        >
-          —
-        </div>
-
-        <div class="size-label">
-          APRÈS
-        </div>
-      </div>
-
-    </div>
-
-    <video
-      id="resultVideo"
-      controls
-      playsinline
-    ></video>
-
-    <a
-      id="downloadBtn"
-      class="download"
-      download="video-45mb.mp4"
-    >
-      TÉLÉCHARGER LE MP4
-    </a>
-
-  </div>
-
-  <div id="error" class="error"></div>
-
-  <div class="footer">
-    MEYDEN — Conversion locale dans votre navigateur
-  </div>
-
+</section>
 </div>
 
-
+<script src="https://cdn.jsdelivr.net/npm/tus-js-client@4/dist/tus.min.js"></script>
 <script type="module">
+import { FFmpeg } from "https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js";
+import { fetchFile, toBlobURL } from "https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js";
 
-/* ==========================================================
-   IMPORT FFMPEG
-   ========================================================== */
+const INLINE_WORKER_SOURCE = `const CORE_VERSION="0.12.10";
+const CORE_URL=\`https://cdn.jsdelivr.net/npm/@ffmpeg/core@\${CORE_VERSION}/dist/umd/ffmpeg-core.js\`;
+const FFMessageType={
+  LOAD:"LOAD", EXEC:"EXEC", FFPROBE:"FFPROBE", WRITE_FILE:"WRITE_FILE",
+  READ_FILE:"READ_FILE", DELETE_FILE:"DELETE_FILE", RENAME:"RENAME",
+  CREATE_DIR:"CREATE_DIR", LIST_DIR:"LIST_DIR", DELETE_DIR:"DELETE_DIR",
+  ERROR:"ERROR", DOWNLOAD:"DOWNLOAD", PROGRESS:"PROGRESS", LOG:"LOG",
+  MOUNT:"MOUNT", UNMOUNT:"UNMOUNT"
+};
+const ERROR_UNKNOWN_MESSAGE_TYPE=new Error("unknown message type");
+const ERROR_NOT_LOADED=new Error("ffmpeg is not loaded, call await ffmpeg.load() first");
+const ERROR_IMPORT_FAILURE=new Error("failed to import ffmpeg-core.js");
 
-import {
-  FFmpeg
-} from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js";
+let ffmpeg;
 
-import {
-  fetchFile,
-  toBlobURL
-} from "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js";
-
-
-/* ==========================================================
-   CONSTANTES
-   ========================================================== */
-
-const MB = 1024 * 1024;
-
-/*
-   La limite officielle est 45 Mo.
-
-   On vise volontairement 43,5 Mo afin de conserver
-   une marge de sécurité pour le conteneur MP4.
-*/
-const MAX_FILE_MB = 45;
-const TARGET_MB = 43.5;
-
-const TARGET_BYTES = TARGET_MB * MB;
-
-
-/* ==========================================================
-   ÉLÉMENTS HTML
-   ========================================================== */
-
-const dropZone =
-  document.getElementById("dropZone");
-
-const fileInput =
-  document.getElementById("fileInput");
-
-const convertBtn =
-  document.getElementById("convertBtn");
-
-const info =
-  document.getElementById("info");
-
-const videoBox =
-  document.getElementById("videoBox");
-
-const preview =
-  document.getElementById("preview");
-
-const fileNameEl =
-  document.getElementById("fileName");
-
-const originalSizeEl =
-  document.getElementById("originalSize");
-
-const durationTextEl =
-  document.getElementById("durationText");
-
-const resolutionTextEl =
-  document.getElementById("resolutionText");
-
-const bitrateTextEl =
-  document.getElementById("bitrateText");
-
-const outputProfileEl =
-  document.getElementById("outputProfile");
-
-const progressSection =
-  document.getElementById("progressSection");
-
-const progressBar =
-  document.getElementById("progressBar");
-
-const progressPercent =
-  document.getElementById("progressPercent");
-
-const progressTitle =
-  document.getElementById("progressTitle");
-
-const status =
-  document.getElementById("status");
-
-const result =
-  document.getElementById("result");
-
-const beforeSize =
-  document.getElementById("beforeSize");
-
-const afterSize =
-  document.getElementById("afterSize");
-
-const resultVideo =
-  document.getElementById("resultVideo");
-
-const downloadBtn =
-  document.getElementById("downloadBtn");
-
-const errorBox =
-  document.getElementById("error");
-
-const warningBox =
-  document.getElementById("warning");
-
-
-/* ==========================================================
-   VARIABLES
-   ========================================================== */
-
-let selectedFile = null;
-
-let videoDuration = 0;
-
-let sourceWidth = 0;
-
-let sourceHeight = 0;
-
-let calculatedBitrate = 0;
-
-let currentScale = 720;
-
-let currentFPS = 30;
-
-let ffmpeg = null;
-
-let ffmpegLoaded = false;
-
-let currentPass = 0;
-
-let sourceObjectURL = null;
-
-let resultObjectURL = null;
-
-
-/* ==========================================================
-   FORMATAGE
-   ========================================================== */
-
-function formatBytes(bytes) {
-
-  if (!bytes || bytes <= 0) {
-    return "0 Mo";
+const load = async ({ coreURL: _coreURL, wasmURL: _wasmURL, workerURL: _workerURL } = {}) => {
+  const first = !ffmpeg;
+  try {
+    if (!_coreURL) _coreURL = CORE_URL;
+    importScripts(_coreURL);
+  } catch {
+    if (!_coreURL) _coreURL = CORE_URL.replace("/umd/", "/esm/");
+    self.createFFmpegCore = (await import(_coreURL)).default;
+    if (!self.createFFmpegCore) throw ERROR_IMPORT_FAILURE;
   }
 
-  return (
-    bytes / MB
-  ).toFixed(2) + " Mo";
-}
-
-
-function formatDuration(seconds) {
-
-  seconds = Math.round(seconds);
-
-  const h =
-    Math.floor(seconds / 3600);
-
-  const m =
-    Math.floor((seconds % 3600) / 60);
-
-  const s =
-    seconds % 60;
-
-  if (h > 0) {
-
-    return (
-      String(h).padStart(2, "0")
-      + ":"
-      + String(m).padStart(2, "0")
-      + ":"
-      + String(s).padStart(2, "0")
-    );
-  }
-
-  return (
-    String(m).padStart(2, "0")
-    + ":"
-    + String(s).padStart(2, "0")
-  );
-}
-
-
-/* ==========================================================
-   CHOIX QUALITÉ
-   ========================================================== */
-
-function chooseProfile(videoKbps) {
-
-  /*
-      Plus la vidéo est longue,
-      moins nous disposons de bitrate.
-
-      On diminue progressivement la résolution.
-  */
-
-  if (videoKbps >= 3200) {
-
-    return {
-      height: 1080,
-      fps: 30
-    };
-
-  }
-
-  if (videoKbps >= 1800) {
-
-    return {
-      height: 720,
-      fps: 30
-    };
-
-  }
-
-  if (videoKbps >= 1000) {
-
-    return {
-      height: 720,
-      fps: 24
-    };
-
-  }
-
-  if (videoKbps >= 600) {
-
-    return {
-      height: 540,
-      fps: 24
-    };
-
-  }
-
-  if (videoKbps >= 350) {
-
-    return {
-      height: 480,
-      fps: 24
-    };
-
-  }
-
-  if (videoKbps >= 200) {
-
-    return {
-      height: 360,
-      fps: 20
-    };
-
-  }
-
-  return {
-    height: 240,
-    fps: 15
-  };
-}
-
-
-/* ==========================================================
-   CALCUL BITRATE
-   ========================================================== */
-
-function calculateEncodingSettings() {
-
-  /*
-      FORMULE :
-
-      Taille = bitrate × durée
-
-      Donc :
-
-      bitrate =
-      (taille maximale × 8) / durée
-  */
-
-  const targetBits =
-    TARGET_BYTES * 8;
-
-  const totalBitsPerSecond =
-    targetBits / videoDuration;
-
-  const totalKbps =
-    totalBitsPerSecond / 1000;
-
-
-  /*
-      Audio AAC.
-
-      64 kb/s donne un compromis correct
-      pour parole / rap / musique.
-  */
-
-  let audioKbps = 64;
-
-
-  /*
-      Pour une très longue vidéo,
-      on peut encore réduire l'audio.
-  */
-
-  if (totalKbps < 350) {
-    audioKbps = 48;
-  }
-
-  if (totalKbps < 200) {
-    audioKbps = 32;
-  }
-
-
-  /*
-      Marge supplémentaire pour métadonnées
-      et overhead du conteneur MP4.
-  */
-
-  let videoKbps =
-    totalKbps
-    - audioKbps
-    - 30;
-
-
-  /*
-      FFmpeg a besoin d'un minimum raisonnable.
-  */
-
-  videoKbps =
-    Math.max(
-      80,
-      Math.floor(videoKbps)
-    );
-
-
-  const profile =
-    chooseProfile(videoKbps);
-
-
-  calculatedBitrate =
-    videoKbps;
-
-  currentScale =
-    profile.height;
-
-  currentFPS =
-    profile.fps;
-
-
-  bitrateTextEl.textContent =
-    videoKbps + " kb/s";
-
-
-  outputProfileEl.textContent =
-    profile.height
-    + "p • "
-    + profile.fps
-    + " FPS • AAC "
-    + audioKbps
-    + " kb/s";
-
-
-  return {
-    videoKbps,
-    audioKbps,
-    height: profile.height,
-    fps: profile.fps
-  };
-}
-
-
-/* ==========================================================
-   SÉLECTION VIDÉO
-   ========================================================== */
-
-dropZone.addEventListener(
-  "click",
-  () => fileInput.click()
-);
-
-
-fileInput.addEventListener(
-  "change",
-  event => {
-
-    const file =
-      event.target.files[0];
-
-    if (file) {
-      loadVideo(file);
-    }
-  }
-);
-
-
-/* ==========================================================
-   DRAG & DROP
-   ========================================================== */
-
-dropZone.addEventListener(
-  "dragover",
-  event => {
-
-    event.preventDefault();
-
-    dropZone.classList.add("drag");
-  }
-);
-
-
-dropZone.addEventListener(
-  "dragleave",
-  () => {
-
-    dropZone.classList.remove("drag");
-  }
-);
-
-
-dropZone.addEventListener(
-  "drop",
-  event => {
-
-    event.preventDefault();
-
-    dropZone.classList.remove("drag");
-
-    const file =
-      event.dataTransfer.files[0];
-
-    if (!file) {
-      return;
-    }
-
-    if (
-      !file.type.startsWith("video/")
-    ) {
-
-      showError(
-        "Le fichier sélectionné n'est pas reconnu comme une vidéo."
-      );
-
-      return;
-    }
-
-    loadVideo(file);
-  }
-);
-
-
-/* ==========================================================
-   LECTURE MÉTADONNÉES
-   ========================================================== */
-
-function loadVideo(file) {
-
-  resetResult();
-
-  selectedFile = file;
-
-  fileNameEl.textContent =
-    file.name;
-
-  originalSizeEl.textContent =
-    formatBytes(file.size);
-
-
-  if (sourceObjectURL) {
-    URL.revokeObjectURL(sourceObjectURL);
-  }
-
-
-  sourceObjectURL =
-    URL.createObjectURL(file);
-
-  preview.src =
-    sourceObjectURL;
-
-
-  preview.onloadedmetadata = () => {
-
-    videoDuration =
-      preview.duration;
-
-    sourceWidth =
-      preview.videoWidth;
-
-    sourceHeight =
-      preview.videoHeight;
-
-
-    durationTextEl.textContent =
-      formatDuration(videoDuration);
-
-
-    resolutionTextEl.textContent =
-      sourceWidth
-      + " × "
-      + sourceHeight;
-
-
-    calculateEncodingSettings();
-
-
-    info.style.display =
-      "block";
-
-    videoBox.style.display =
-      "block";
-
-    convertBtn.disabled =
-      false;
-
-
-    /*
-       Avertissement si fichier très gros.
-
-       Ce n'est pas un refus.
-    */
-
-    if (file.size > 700 * MB) {
-
-      warningBox.style.display =
-        "block";
-
-      warningBox.textContent =
-        "⚠ Cette vidéo est très volumineuse. "
-        + "La conversion est possible, mais un ordinateur "
-        + "avec beaucoup de mémoire est recommandé.";
-
-    } else {
-
-      warningBox.style.display =
-        "none";
-    }
-
-
-    if (file.size <= MAX_FILE_MB * MB) {
-
-      warningBox.style.display =
-        "block";
-
-      warningBox.textContent =
-        "✓ Cette vidéo est déjà sous 45 Mo. "
-        + "Tu peux quand même l'optimiser et la convertir en MP4.";
-    }
-  };
-}
-
-
-/* ==========================================================
-   CHARGEMENT FFMPEG
-   ========================================================== */
-
-async function loadFFmpeg() {
-
-  if (ffmpegLoaded) {
-    return;
-  }
-
-
-  setStatus(
-    "Chargement du moteur vidéo…"
-  );
-
-
-  ffmpeg =
-    new FFmpeg();
-
-
-  /*
-      PROGRESSION
-
-      Pass 1 = 0 → 48 %
-      Pass 2 = 50 → 98 %
-  */
-
-  ffmpeg.on(
-    "progress",
-    ({ progress }) => {
-
-      let p =
-        Math.max(
-          0,
-          Math.min(
-            1,
-            progress || 0
-          )
-        );
-
-
-      let displayProgress = 0;
-
-
-      if (currentPass === 1) {
-
-        displayProgress =
-          p * 48;
-
-      } else if (currentPass === 2) {
-
-        displayProgress =
-          50 + p * 48;
-
-      } else {
-
-        displayProgress =
-          p * 98;
-      }
-
-
-      setProgress(
-        displayProgress
-      );
-    }
-  );
-
-
-  const baseURL =
-    "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
-
-
-  await ffmpeg.load({
-
-    coreURL:
-      await toBlobURL(
-        `${baseURL}/ffmpeg-core.js`,
-        "text/javascript"
-      ),
-
-    wasmURL:
-      await toBlobURL(
-        `${baseURL}/ffmpeg-core.wasm`,
-        "application/wasm"
-      )
-
+  const coreURL = _coreURL;
+  const wasmURL = _wasmURL || _coreURL.replace(/\\.js$/g, ".wasm");
+  const workerURL = _workerURL || _coreURL.replace(/\\.js$/g, ".worker.js");
+
+  ffmpeg = await self.createFFmpegCore({
+    mainScriptUrlOrBlob: \`\${coreURL}#\${btoa(JSON.stringify({ wasmURL, workerURL }))}\`,
   });
 
+  ffmpeg.setLogger((data) => self.postMessage({ type: FFMessageType.LOG, data }));
+  ffmpeg.setProgress((data) => self.postMessage({ type: FFMessageType.PROGRESS, data }));
+  return first;
+};
 
-  ffmpegLoaded = true;
-}
+const exec = ({ args, timeout = -1 }) => {
+  ffmpeg.setTimeout(timeout);
+  ffmpeg.exec(...args);
+  const ret = ffmpeg.ret;
+  ffmpeg.reset();
+  return ret;
+};
 
+const ffprobe = ({ args, timeout = -1 }) => {
+  ffmpeg.setTimeout(timeout);
+  ffmpeg.ffprobe(...args);
+  const ret = ffmpeg.ret;
+  ffmpeg.reset();
+  return ret;
+};
 
-/* ==========================================================
-   CONVERSION
-   ========================================================== */
+const writeFile = ({ path, data }) => {
+  ffmpeg.FS.writeFile(path, data);
+  return true;
+};
+const readFile = ({ path, encoding }) => ffmpeg.FS.readFile(path, { encoding });
+const deleteFile = ({ path }) => { ffmpeg.FS.unlink(path); return true; };
+const rename = ({ oldPath, newPath }) => { ffmpeg.FS.rename(oldPath, newPath); return true; };
+const createDir = ({ path }) => { ffmpeg.FS.mkdir(path); return true; };
+const listDir = ({ path }) => ffmpeg.FS.readdir(path).map((name) => {
+  const stat = ffmpeg.FS.stat(\`\${path}/\${name}\`);
+  return { name, isDir: ffmpeg.FS.isDir(stat.mode) };
+});
+const deleteDir = ({ path }) => { ffmpeg.FS.rmdir(path); return true; };
+const mount = ({ fsType, options, mountPoint }) => {
+  const fs = ffmpeg.FS.filesystems[fsType];
+  if (!fs) return false;
+  ffmpeg.FS.mount(fs, options, mountPoint);
+  return true;
+};
+const unmount = ({ mountPoint }) => { ffmpeg.FS.unmount(mountPoint); return true; };
 
-convertBtn.addEventListener(
-  "click",
-  async () => {
-
-    if (!selectedFile) {
-      return;
+self.onmessage = async ({ data: { id, type, data: _data } }) => {
+  const trans = [];
+  let data;
+  try {
+    if (type !== FFMessageType.LOAD && !ffmpeg) throw ERROR_NOT_LOADED;
+    switch (type) {
+      case FFMessageType.LOAD: data = await load(_data); break;
+      case FFMessageType.EXEC: data = exec(_data); break;
+      case FFMessageType.FFPROBE: data = ffprobe(_data); break;
+      case FFMessageType.WRITE_FILE: data = writeFile(_data); break;
+      case FFMessageType.READ_FILE: data = readFile(_data); break;
+      case FFMessageType.DELETE_FILE: data = deleteFile(_data); break;
+      case FFMessageType.RENAME: data = rename(_data); break;
+      case FFMessageType.CREATE_DIR: data = createDir(_data); break;
+      case FFMessageType.LIST_DIR: data = listDir(_data); break;
+      case FFMessageType.DELETE_DIR: data = deleteDir(_data); break;
+      case FFMessageType.MOUNT: data = mount(_data); break;
+      case FFMessageType.UNMOUNT: data = unmount(_data); break;
+      default: throw ERROR_UNKNOWN_MESSAGE_TYPE;
     }
-
-
-    convertBtn.disabled =
-      true;
-
-    errorBox.style.display =
-      "none";
-
-    result.style.display =
-      "none";
-
-    progressSection.style.display =
-      "block";
-
-    setProgress(0);
-
-
-    try {
-
-      await loadFFmpeg();
-
-
-      const settings =
-        calculateEncodingSettings();
-
-
-      setStatus(
-        "Chargement de la vidéo…"
-      );
-
-
-      /*
-         Extension d'entrée.
-      */
-
-      const extension =
-        selectedFile.name
-        .split(".")
-        .pop()
-        .toLowerCase()
-        .replace(
-          /[^a-z0-9]/g,
-          ""
-        )
-        || "mp4";
-
-
-      const inputName =
-        "input." + extension;
-
-      const passOne =
-        "pass1.mp4";
-
-      const outputName =
-        "compressed.mp4";
-
-
-      /*
-         Nettoyage préventif.
-      */
-
-      await safeDelete(
-        inputName
-      );
-
-      await safeDelete(
-        passOne
-      );
-
-      await safeDelete(
-        outputName
-      );
-
-      await safeDelete(
-        "ffmpeg2pass-0.log"
-      );
-
-      await safeDelete(
-        "ffmpeg2pass-0.log.mbtree"
-      );
-
-
-      /*
-         Écriture du fichier dans le
-         système de fichiers WebAssembly.
-      */
-
-      await ffmpeg.writeFile(
-        inputName,
-        await fetchFile(selectedFile)
-      );
-
-
-      /*
-         Ne jamais agrandir inutilement
-         une vidéo déjà plus petite.
-      */
-
-      let finalHeight =
-        Math.min(
-          settings.height,
-          sourceHeight || settings.height
-        );
-
-
-      /*
-         Hauteur paire obligatoire pour x264.
-      */
-
-      finalHeight =
-        Math.max(
-          144,
-          Math.floor(finalHeight / 2) * 2
-        );
-
-
-      const scaleFilter =
-        `scale=-2:${finalHeight}:flags=lanczos,fps=${settings.fps}`;
-
-
-      /* ======================================================
-         PASS 1
-         ====================================================== */
-
-      currentPass = 1;
-
-      progressTitle.textContent =
-        "Analyse et optimisation";
-
-      setStatus(
-        "Passe 1/2 — analyse de la vidéo…"
-      );
-
-
-      await ffmpeg.exec([
-
-        "-y",
-
-        "-i",
-        inputName,
-
-        "-map",
-        "0:v:0",
-
-        "-c:v",
-        "libx264",
-
-        "-preset",
-        "veryfast",
-
-        "-b:v",
-        `${settings.videoKbps}k`,
-
-        "-maxrate",
-        `${Math.floor(settings.videoKbps * 1.20)}k`,
-
-        "-bufsize",
-        `${settings.videoKbps * 2}k`,
-
-        "-vf",
-        scaleFilter,
-
-        "-pix_fmt",
-        "yuv420p",
-
-        "-pass",
-        "1",
-
-        "-passlogfile",
-        "ffmpeg2pass",
-
-        "-an",
-
-        "-movflags",
-        "+faststart",
-
-        passOne
-      ]);
-
-
-      /*
-         On n'a plus besoin du fichier
-         vidéo généré lors de la passe 1.
-      */
-
-      await safeDelete(
-        passOne
-      );
-
-
-      /* ======================================================
-         PASS 2
-         ====================================================== */
-
-      currentPass = 2;
-
-      setStatus(
-        "Passe 2/2 — création du MP4 final…"
-      );
-
-
-      await ffmpeg.exec([
-
-        "-y",
-
-        "-i",
-        inputName,
-
-        "-map",
-        "0:v:0",
-
-        "-map",
-        "0:a?",
-
-        "-c:v",
-        "libx264",
-
-        "-preset",
-        "veryfast",
-
-        "-b:v",
-        `${settings.videoKbps}k`,
-
-        "-maxrate",
-        `${Math.floor(settings.videoKbps * 1.20)}k`,
-
-        "-bufsize",
-        `${settings.videoKbps * 2}k`,
-
-        "-vf",
-        scaleFilter,
-
-        "-pix_fmt",
-        "yuv420p",
-
-        "-pass",
-        "2",
-
-        "-passlogfile",
-        "ffmpeg2pass",
-
-        "-c:a",
-        "aac",
-
-        "-b:a",
-        `${settings.audioKbps}k`,
-
-        "-ac",
-        "2",
-
-        "-ar",
-        "44100",
-
-        "-movflags",
-        "+faststart",
-
-        outputName
-      ]);
-
-
-      setStatus(
-        "Vérification du poids final…"
-      );
-
-
-      let data =
-        await ffmpeg.readFile(
-          outputName
-        );
-
-
-      let outputBlob =
-        new Blob(
-          [data.buffer],
-          {
-            type: "video/mp4"
-          }
-        );
-
-
-      /*
-         ======================================================
-         CONTRÔLE FINAL
-
-         Si le résultat dépasse malgré tout
-         45 Mo, on effectue une seconde
-         compression automatiquement.
-         ======================================================
-      */
-
-      if (
-        outputBlob.size >
-        MAX_FILE_MB * MB
-      ) {
-
-        setStatus(
-          "Ajustement automatique : le fichier dépasse légèrement 45 Mo…"
-        );
-
-
-        currentPass = 2;
-
-
-        /*
-           Nouveau bitrate proportionnel
-           à l'écart observé.
-        */
-
-        const ratio =
-          TARGET_BYTES /
-          outputBlob.size;
-
-
-        const correctedVideoKbps =
-          Math.max(
-            70,
-            Math.floor(
-              settings.videoKbps
-              * ratio
-              * 0.96
-            )
-          );
-
-
-        await safeDelete(
-          "compressed2.mp4"
-        );
-
-
-        await ffmpeg.exec([
-
-          "-y",
-
-          "-i",
-          inputName,
-
-          "-map",
-          "0:v:0",
-
-          "-map",
-          "0:a?",
-
-          "-c:v",
-          "libx264",
-
-          "-preset",
-          "veryfast",
-
-          "-b:v",
-          `${correctedVideoKbps}k`,
-
-          "-maxrate",
-          `${Math.floor(correctedVideoKbps * 1.15)}k`,
-
-          "-bufsize",
-          `${correctedVideoKbps * 2}k`,
-
-          "-vf",
-          scaleFilter,
-
-          "-pix_fmt",
-          "yuv420p",
-
-          "-c:a",
-          "aac",
-
-          "-b:a",
-          `${settings.audioKbps}k`,
-
-          "-ac",
-          "2",
-
-          "-ar",
-          "44100",
-
-          "-movflags",
-          "+faststart",
-
-          "compressed2.mp4"
-        ]);
-
-
-        data =
-          await ffmpeg.readFile(
-            "compressed2.mp4"
-          );
-
-
-        outputBlob =
-          new Blob(
-            [data.buffer],
-            {
-              type: "video/mp4"
-            }
-          );
-      }
-
-
-      /* ======================================================
-         RÉSULTAT
-         ====================================================== */
-
-      if (resultObjectURL) {
-
-        URL.revokeObjectURL(
-          resultObjectURL
-        );
-      }
-
-
-      resultObjectURL =
-        URL.createObjectURL(
-          outputBlob
-        );
-
-
-      resultVideo.src =
-        resultObjectURL;
-
-
-      downloadBtn.href =
-        resultObjectURL;
-
-
-      /*
-         Nom du fichier final.
-      */
-
-      const baseName =
-        selectedFile.name
-        .replace(/\.[^/.]+$/, "")
-        .replace(
-          /[^a-zA-Z0-9À-ÿ_-]+/g,
-          "-"
-        );
-
-
-      downloadBtn.download =
-        `${baseName}-45MB.mp4`;
-
-
-      beforeSize.textContent =
-        formatBytes(
-          selectedFile.size
-        );
-
-
-      afterSize.textContent =
-        formatBytes(
-          outputBlob.size
-        );
-
-
-      setProgress(100);
-
-
-      progressTitle.textContent =
-        "Terminé";
-
-
-      if (
-        outputBlob.size <=
-        MAX_FILE_MB * MB
-      ) {
-
-        setStatus(
-          "✓ Conversion réussie — vidéo sous 45 Mo."
-        );
-
-      } else {
-
-        setStatus(
-          "Conversion terminée. La limite n'a pas pu être atteinte exactement avec ce navigateur."
-        );
-      }
-
-
-      result.style.display =
-        "block";
-
-
-      /*
-         Nettoyage mémoire FFmpeg.
-      */
-
-      await safeDelete(
-        inputName
-      );
-
-      await safeDelete(
-        passOne
-      );
-
-      await safeDelete(
-        outputName
-      );
-
-      await safeDelete(
-        "compressed2.mp4"
-      );
-
-      await safeDelete(
-        "ffmpeg2pass-0.log"
-      );
-
-      await safeDelete(
-        "ffmpeg2pass-0.log.mbtree"
-      );
-
-
-    } catch (error) {
-
-      console.error(error);
-
-      showError(
-        "Erreur pendant la conversion.\n\n"
-        + (
-          error?.message
-          || String(error)
-        )
-        + "\n\nSi la vidéo est très lourde, "
-        + "essaie sur un ordinateur avec davantage de mémoire."
-      );
-
-
-      setStatus(
-        "Échec de la conversion."
-      );
-
-
-    } finally {
-
-      convertBtn.disabled =
-        false;
-
-      currentPass =
-        0;
-    }
-  }
-);
-
-
-/* ==========================================================
-   SUPPRESSION FICHIER VIRTUEL
-   ========================================================== */
-
-async function safeDelete(name) {
-
-  if (!ffmpeg) {
+  } catch (e) {
+    self.postMessage({ id, type: FFMessageType.ERROR, data: String(e) });
     return;
   }
+  if (data instanceof Uint8Array) trans.push(data.buffer);
+  self.postMessage({ id, type, data }, trans);
+};
+`;
+let INLINE_WORKER_URL = null;
+function getInlineWorkerURL(){
+  if(!INLINE_WORKER_URL){
+    INLINE_WORKER_URL = URL.createObjectURL(new Blob([INLINE_WORKER_SOURCE],{type:"text/javascript"}));
+  }
+  return INLINE_WORKER_URL;
+}
 
-  try {
+const $=id=>document.getElementById(id);
+const TARGET_MIB=40.5, HARD_MIB=45;
+const TARGET_BYTES=TARGET_MIB*1024*1024, HARD_BYTES=HARD_MIB*1024*1024;
+const qs=new URLSearchParams(location.search);
+const RETURN_URL=qs.get("return")||"";
+const CHALLENGE_ID=qs.get("challenge")||"";
+const SUPABASE_URL="https://hixkezzjgxfzmymkfyko.supabase.co";
+const SUPABASE_KEY="sb_publishable_5yp_LpH40HLd5C4btrltyw_r7wUrSFS";
+const UPLOAD_ENDPOINT=SUPABASE_URL+"/functions/v1/rj-upload-url";
+const STORAGE_TUS_ENDPOINT=SUPABASE_URL+"/storage/v1/upload/resumable";
+let selected=null, previewURL=null, outURL=null, ffmpeg=null, ffmpegReady=false, duration=0, sourcePlayable=false;
 
-    await ffmpeg.deleteFile(
-      name
-    );
+function fmt(b){return (b/1024/1024).toFixed(1)+" Mo"}
+function tf(s){if(!Number.isFinite(s)||s<=0)return "—";const m=Math.floor(s/60),r=Math.round(s%60);return `${m}:${String(r).padStart(2,"0")}`}
+function status(t,c=""){const e=$("status");e.textContent=t;e.className="info "+c;e.classList.remove("hidden")}
+function progress(p){$("prog").classList.remove("hidden");$("bar").style.width=Math.max(0,Math.min(100,p))+"%"}
+function log(t){$("log").classList.remove("hidden");$("log").textContent+=(($("log").textContent?"\n":"")+t);$("log").scrollTop=$("log").scrollHeight}
+function safeExt(name){const m=/\.([a-z0-9]+)$/i.exec(name||"");return m?m[1].toLowerCase():"bin"}
+function safeBase(name){return (name||"video").replace(/\.[^.]+$/,"").replace(/[^\w-]+/g,"_").slice(0,60)||"video"}
 
-  } catch (_) {
+async function tryBrowserPreview(file){
+  return new Promise(resolve=>{
+    if(previewURL)URL.revokeObjectURL(previewURL);
+    previewURL=URL.createObjectURL(file);
+    const v=$("preview");
+    v.src=previewURL;v.load();v.classList.remove("hidden");
+    let done=false;
+    const finish=(ok,d=0)=>{if(done)return;done=true;resolve({ok,d})};
+    v.onloadedmetadata=()=>finish(v.videoWidth>0&&v.videoHeight>0,Number(v.duration)||0);
+    v.onerror=()=>finish(false,0);
+    setTimeout(()=>finish(false,0),5000);
+  });
+}
 
-    /*
-       Le fichier n'existe peut-être pas.
-       Ce n'est pas une erreur critique.
-    */
+async function choose(file){
+  if(!file)return;
+  selected=file;duration=0;sourcePlayable=false;
+  $("convert").disabled=false;$("change").disabled=false;
+  $("meta").classList.remove("hidden");$("stats").classList.remove("hidden");
+  $("sizeStat").textContent=fmt(file.size);$("durStat").textContent="Analyse…";
+  $("meta").innerHTML=`<strong>${file.name}</strong><br>${fmt(file.size)} · analyse du codec en cours`;
+  const p=await tryBrowserPreview(file);
+  sourcePlayable=p.ok;duration=p.d||0;
+  if(sourcePlayable){
+    $("durStat").textContent=tf(duration);
+    status("La vidéo est lisible par le navigateur. Tu peux la convertir ou l'envoyer si elle est déjà assez petite.","good");
+  }else{
+    $("preview").classList.add("hidden");
+    $("durStat").textContent="FFmpeg";
+    status("Le navigateur ne peut pas lire cette vidéo. Ce n'est plus bloquant : Convertir45 va l'analyser directement avec FFmpeg.","warn");
   }
 }
+$("drop").onclick=()=>$("file").click();$("change").onclick=()=>$("file").click();
+$("file").onchange=e=>choose(e.target.files?.[0]);
+["dragenter","dragover"].forEach(n=>$("drop").addEventListener(n,e=>{e.preventDefault();$("drop").classList.add("drag")}));
+["dragleave","drop"].forEach(n=>$("drop").addEventListener(n,e=>{e.preventDefault();$("drop").classList.remove("drag")}));
+$("drop").addEventListener("drop",e=>choose(e.dataTransfer.files?.[0]));
 
+async function loadFFmpeg(){
+  if(ffmpegReady)return ffmpeg;
+  status("Chargement du moteur FFmpeg…","warn");progress(3);
+  ffmpeg=new FFmpeg();
+  ffmpeg.on("progress",({progress:p})=>{if(Number.isFinite(p))progress(10+Math.min(85,p*85))});
+  ffmpeg.on("log",({message})=>{if(message)log(message)});
 
-/* ==========================================================
-   PROGRESSION
-   ========================================================== */
+  const coreBase="https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
+  await ffmpeg.load({
+    classWorkerURL:getInlineWorkerURL(),
+    coreURL:await toBlobURL(`${coreBase}/ffmpeg-core.js`,"text/javascript"),
+    wasmURL:await toBlobURL(`${coreBase}/ffmpeg-core.wasm`,"application/wasm")
+  });
+  ffmpegReady=true;progress(8);status("FFmpeg prêt. Analyse de la vidéo…","warn");
+  return ffmpeg;
+}
 
-function setProgress(value) {
+async function probeDuration(inputName){
+  const out="duration.txt";
+  try{await ffmpeg.deleteFile(out)}catch{}
+  await ffmpeg.ffprobe(["-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1",inputName,"-o",out]);
+  const data=await ffmpeg.readFile(out);
+  const text=new TextDecoder().decode(data).trim();
+  const n=Number(text);
+  try{await ffmpeg.deleteFile(out)}catch{}
+  if(Number.isFinite(n)&&n>0)return n;
+  throw new Error("Impossible de déterminer la durée de la vidéo.");
+}
 
-  value =
-    Math.max(
-      0,
-      Math.min(
-        100,
-        value
-      )
-    );
+function profileForBitrate(kbps){
+  if(kbps>=1800)return {scale:"scale='min(1920,iw)':-2",fps:"30"};
+  if(kbps>=900)return {scale:"scale='min(1280,iw)':-2",fps:"30"};
+  if(kbps>=500)return {scale:"scale='min(960,iw)':-2",fps:"30"};
+  if(kbps>=280)return {scale:"scale='min(854,iw)':-2",fps:"24"};
+  return {scale:"scale='min(640,iw)':-2",fps:"20"};
+}
 
+async function encodeAttempt(inputName,outputName,dur,mult=1){
+  const audioK=64;
+  const totalKbps=(TARGET_BYTES*8/dur/1000)*0.92*mult;
+  const videoK=Math.max(180,Math.floor(totalKbps-audioK-40));
+  const prof=profileForBitrate(videoK);
+  status(`Conversion : ${tf(dur)} · ${Math.round(videoK)} kb/s vidéo · ${prof.fps} fps`,"warn");
+  progress(10);
 
-  progressBar.style.width =
-    value.toFixed(1) + "%";
-
-
-  progressPercent.textContent =
-    Math.round(value) + " %";
+  const code=await ffmpeg.exec([
+    "-i",inputName,
+    "-map","0:v:0","-map","0:a:0?",
+    "-vf",prof.scale,
+    "-r",prof.fps,
+    "-c:v","libx264","-preset","ultrafast","-pix_fmt","yuv420p",
+    "-b:v",`${videoK}k`,"-maxrate",`${Math.round(videoK*1.08)}k`,"-bufsize",`${Math.max(360,videoK*2)}k`,
+    "-c:a","aac","-b:a",`${audioK}k`,"-ac","2",
+    "-movflags","+faststart",outputName
+  ]);
+  if(code!==0)throw new Error("FFmpeg n'a pas réussi à convertir cette vidéo.");
 }
 
 
-function setStatus(text) {
-
-  status.textContent =
-    text;
+async function createRapUpload(file){
+  if(!CHALLENGE_ID)throw new Error("Challenge Rap Jungle manquant dans le lien de conversion.");
+  const r=await fetch(UPLOAD_ENDPOINT,{
+    method:"POST",
+    headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY},
+    body:JSON.stringify({
+      challengeId:CHALLENGE_ID,
+      filename:file.name,
+      fileSize:file.size
+    })
+  });
+  const j=await r.json();
+  if(!r.ok||j.error)throw new Error(j.error||"Impossible de préparer le dépôt Rap Jungle.");
+  return j;
 }
 
-
-/* ==========================================================
-   ERREURS
-   ========================================================== */
-
-function showError(message) {
-
-  errorBox.textContent =
-    message;
-
-  errorBox.style.display =
-    "block";
+function uploadToRapJungle(file,prep){
+  return new Promise((resolve,reject)=>{
+    if(!window.tus?.Upload){
+      reject(new Error("Le module d’envoi vidéo n’a pas chargé."));
+      return;
+    }
+    const upload=new tus.Upload(file,{
+      endpoint:STORAGE_TUS_ENDPOINT,
+      retryDelays:[0,2000,4000,8000,12000],
+      headers:{"x-signature":prep.token},
+      uploadDataDuringCreation:true,
+      removeFingerprintOnSuccess:true,
+      chunkSize:6*1024*1024,
+      metadata:{
+        bucketName:"rap-jungle-submissions",
+        objectName:prep.path,
+        contentType:"video/mp4",
+        cacheControl:"3600"
+      },
+      onProgress:(done,total)=>{
+        const pct=Math.round((done/total)*100);
+        progress(pct);
+        status(`Envoi automatique vers Rap Jungle : ${pct}%`,"warn");
+      },
+      onError:reject,
+      onSuccess:()=>resolve(true)
+    });
+    upload.start();
+  });
 }
 
+async function handoffToRapJungle(blob,filename){
+  if(!RETURN_URL||!CHALLENGE_ID)return false;
+  const file=new File([blob],filename,{type:"video/mp4",lastModified:Date.now()});
+  status("Conversion terminée. Envoi automatique vers Rap Jungle…","warn");
+  progress(0);
 
-/* ==========================================================
-   RESET
-   ========================================================== */
+  const prep=await createRapUpload(file);
+  await uploadToRapJungle(file,prep);
 
-function resetResult() {
+  const back=new URL(RETURN_URL);
+  back.searchParams.set("converted","1");
+  back.searchParams.set("uploadId",prep.id);
+  back.searchParams.set("videoPath",prep.path);
+  back.searchParams.set("filename",filename);
 
-  errorBox.style.display =
-    "none";
+  status("Vidéo validée à 100 %. Retour vers Rap Jungle…","good");
+  progress(100);
+  setTimeout(()=>location.href=back.toString(),700);
+  return true;
+}
 
-  result.style.display =
-    "none";
+$("convert").onclick=async()=>{
+  if(!selected)return;
+  $("convert").disabled=true;$("change").disabled=true;$("download").classList.add("hidden");$("returnRap").classList.add("hidden");$("log").textContent="";
+  try{
+    await loadFFmpeg();
+    const ext=safeExt(selected.name), inputName=`input.${ext}`, outputName="converted.mp4";
+    status("Copie de la vidéo dans le moteur de conversion…","warn");progress(9);
+    await ffmpeg.writeFile(inputName,await fetchFile(selected));
 
-  progressSection.style.display =
-    "none";
+    duration=duration||await probeDuration(inputName);
+    $("durStat").textContent=tf(duration);
 
-  warningBox.style.display =
-    "none";
+    let mult=1,blob=null;
+    for(let attempt=1;attempt<=3;attempt++){
+      try{await ffmpeg.deleteFile(outputName)}catch{}
+      await encodeAttempt(inputName,outputName,duration,mult);
+      const data=await ffmpeg.readFile(outputName);
+      blob=new Blob([data.buffer],{type:"video/mp4"});
+      if(blob.size<=HARD_BYTES)break;
+      mult*=Math.max(.55,(HARD_BYTES/blob.size)*.88);
+      status(`Résultat ${fmt(blob.size)} : nouvelle compression automatique…`,"warn");
+      progress(12);
+    }
+    if(!blob||blob.size>HARD_BYTES)throw new Error("La vidéo n'a pas pu être ramenée sous 45 Mo après plusieurs ajustements.");
 
-  setProgress(0);
+    if(outURL)URL.revokeObjectURL(outURL);
+    outURL=URL.createObjectURL(blob);
+    const filename=`${safeBase(selected.name)}_45Mo.mp4`;
+    $("download").href=outURL;$("download").download=filename;$("download").classList.remove("hidden");
+    progress(100);status(`Conversion terminée : ${fmt(blob.size)}. MP4 H.264/AAC validé.`,"good");
 
+    // If opened by Rap Jungle, upload the converted file automatically
+    // and return with a storage reference. No second file selection is needed.
+    if(RETURN_URL && CHALLENGE_ID){
+      await handoffToRapJungle(blob,filename);
+    }else if(RETURN_URL){
+      $("returnRap").href=RETURN_URL;
+      $("returnRap").classList.remove("hidden");
+    }
 
-  if (resultObjectURL) {
-
-    URL.revokeObjectURL(
-      resultObjectURL
-    );
-
-    resultObjectURL =
-      null;
+    try{await ffmpeg.deleteFile(inputName)}catch{}
+    try{await ffmpeg.deleteFile(outputName)}catch{}
+  }catch(e){
+    status("Erreur : "+(e?.message||String(e)),"bad");
+  }finally{
+    $("convert").disabled=false;$("change").disabled=false;
   }
-}
-
+};
 </script>
-
 </body>
 </html>
