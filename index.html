@@ -82,7 +82,7 @@ const SUPABASE_URL="https://hixkezzjgxfzmymkfyko.supabase.co";
 const SUPABASE_KEY="sb_publishable_5yp_LpH40HLd5C4btrltyw_r7wUrSFS";
 const UPLOAD_ENDPOINT=SUPABASE_URL+"/functions/v1/rj-upload-url";
 const STORAGE_TUS_ENDPOINT=SUPABASE_URL+"/storage/v1/upload/resumable";
-let selected=null, previewURL=null, outURL=null, ffmpeg=null, ffmpegReady=false, duration=0, sourcePlayable=false;
+let selected=null, selectedBytes=null, previewURL=null, outURL=null, ffmpeg=null, ffmpegReady=false, duration=0, sourcePlayable=false;
 let probeCapture=null;
 
 function fmt(b){return (b/1024/1024).toFixed(1)+" Mo"}
@@ -190,31 +190,62 @@ async function tryBrowserPreview(file){
 
 async function choose(file){
   if(!file)return;
-  selected=file;duration=0;sourcePlayable=false;
-  $("convert").disabled=false;$("change").disabled=false;
-  $("meta").classList.remove("hidden");$("stats").classList.remove("hidden");
-  $("sizeStat").textContent=fmt(file.size);$("durStat").textContent="Analyse…";
-  $("meta").innerHTML=`<strong>${file.name}</strong><br>${fmt(file.size)} · lecture des métadonnées en cours`;
 
-  // Read duration from the MP4/MOV container itself first.
-  // This works even when Android/Chrome cannot decode the preview.
   try{
-    const c=await readContainerDuration(file);
-    if(c.duration>0)duration=c.duration;
-  }catch{}
+    // IMPORTANT FOR ANDROID:
+    // Copy the selected file immediately while the browser still owns the
+    // temporary permission granted by the file picker. Some Android file
+    // providers revoke that permission after asynchronous metadata/preview work.
+    status("Copie sécurisée de la vidéo en mémoire…","warn");
+    progress(2);
 
-  const p=await tryBrowserPreview(file);
-  sourcePlayable=p.ok;
-  if(!duration && p.d>0)duration=p.d;
+    const ab=await file.arrayBuffer();
+    selectedBytes=new Uint8Array(ab);
 
-  if(duration)$("durStat").textContent=tf(duration);
+    // Work only from this stable in-memory File from now on.
+    selected=new File(
+      [selectedBytes],
+      file.name||"video.mp4",
+      {type:file.type||"video/mp4",lastModified:Date.now()}
+    );
 
-  if(sourcePlayable){
-    status("Vidéo détectée. Convertir45 peut la normaliser sous 45 Mo.","good");
-  }else{
-    $("preview").classList.add("hidden");
-    $("durStat").textContent=duration?tf(duration):"Analyse FFmpeg";
-    status("Le lecteur Android ne peut pas afficher cette vidéo, mais Convertir45 peut continuer avec le fichier brut.","warn");
+    duration=0;
+    sourcePlayable=false;
+
+    $("convert").disabled=false;
+    $("change").disabled=false;
+    $("meta").classList.remove("hidden");
+    $("stats").classList.remove("hidden");
+    $("sizeStat").textContent=fmt(selected.size);
+    $("durStat").textContent="Analyse…";
+    $("meta").innerHTML=`<strong>${selected.name}</strong><br>${fmt(selected.size)} · fichier sécurisé en mémoire`;
+
+    // Read MP4/MOV duration from the stable in-memory copy.
+    try{
+      const c=await readContainerDuration(selected);
+      if(c.duration>0)duration=c.duration;
+    }catch{}
+
+    const p=await tryBrowserPreview(selected);
+    sourcePlayable=p.ok;
+    if(!duration && p.d>0)duration=p.d;
+
+    if(duration)$("durStat").textContent=tf(duration);
+
+    if(sourcePlayable){
+      status("Vidéo sécurisée et prête pour la conversion.","good");
+    }else{
+      $("preview").classList.add("hidden");
+      $("durStat").textContent=duration?tf(duration):"Analyse FFmpeg";
+      status("Le lecteur Android ne peut pas l’afficher, mais le fichier est maintenant sécurisé en mémoire et peut être converti.","warn");
+    }
+
+    progress(0);
+  }catch(e){
+    selected=null;
+    selectedBytes=null;
+    $("convert").disabled=true;
+    status("Impossible de copier la vidéo depuis le sélecteur Android. Choisis-la de nouveau depuis la mémoire locale du téléphone.","bad");
   }
 }
 $("drop").onclick=()=>$("file").click();$("change").onclick=()=>$("file").click();
@@ -426,7 +457,7 @@ async function nativeBrowserFallback(){
   if(!selected)throw new Error("Aucune vidéo sélectionnée.");
 
   const test=document.createElement("video");
-  test.src=URL.createObjectURL(selected);
+  test.src=URL.createObjectURL(new File([selectedBytes||selected],selected.name,{type:selected.type||"video/mp4"}));
   test.preload="auto";
   test.playsInline=true;
   test.muted=false;
@@ -551,12 +582,20 @@ $("convert").onclick=async()=>{
     progress(4);
 
     let sourceBytes;
-    const container=await readContainerDuration(selected);
-    if(container.bytes){
-      sourceBytes=container.bytes;
-      if(!duration && container.duration>0)duration=container.duration;
+    if(selectedBytes && selectedBytes.byteLength){
+      sourceBytes=selectedBytes;
     }else{
+      // Fallback only; normal Android path should already have selectedBytes.
       sourceBytes=new Uint8Array(await selected.arrayBuffer());
+      selectedBytes=sourceBytes;
+    }
+
+    if(!duration){
+      try{
+        const stableFile=new File([sourceBytes],selected.name,{type:selected.type||"video/mp4"});
+        const container=await readContainerDuration(stableFile);
+        if(container.duration>0)duration=container.duration;
+      }catch{}
     }
 
     let blob=null;
@@ -629,7 +668,13 @@ $("convert").onclick=async()=>{
 
   }catch(e){
     const raw=String(e?.message||e||"Erreur inconnue");
-    status("Erreur : "+raw,"bad");
+    {
+      let msg=raw;
+      if(/requested file could not be read|permission problems|reference to a file was acquired/i.test(raw)){
+        msg="Android a retiré l’accès temporaire au fichier. Cette version copie maintenant la vidéo immédiatement en mémoire dès sa sélection; choisis la vidéo une seule fois de nouveau.";
+      }
+      status("Erreur : "+msg,"bad");
+    }
   }finally{
     $("convert").disabled=false;
     $("change").disabled=false;
