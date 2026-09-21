@@ -385,7 +385,7 @@ function uploadToRapJungle(file,prep){
       metadata:{
         bucketName:"rap-jungle-submissions",
         objectName:prep.path,
-        contentType:"video/mp4",
+        contentType:file.type||"video/mp4",
         cacheControl:"3600"
       },
       onProgress:(done,total)=>{
@@ -438,11 +438,14 @@ async function nativeBrowserFallback(){
     test.load();
   });
 
+  // On Android, MediaRecorder MP4 can produce timestamp quirks.
+  // Prefer WebM in fallback mode because Chrome records it more reliably.
   const mimeCandidates=[
-    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
-    'video/mp4',
     'video/webm;codecs=vp8,opus',
-    'video/webm'
+    'video/webm;codecs=vp9,opus',
+    'video/webm',
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4'
   ];
   const mime=mimeCandidates.find(x=>window.MediaRecorder && MediaRecorder.isTypeSupported(x));
   if(!mime)throw new Error("Aucun encodeur vidéo natif compatible sur ce navigateur.");
@@ -618,11 +621,7 @@ $("convert").onclick=async()=>{
     status(`Conversion terminée : ${fmt(blob.size)}. Fichier prêt pour Rap Jungle.`,"good");
 
     if(RETURN_URL && CHALLENGE_ID){
-      if(blob.type!=="video/mp4"){
-        status("Conversion terminée, mais ce navigateur a produit WebM. Télécharge le fichier; l'envoi automatique Rap Jungle exige MP4.","warn");
-      }else{
-        await handoffToRapJungle(blob,filename);
-      }
+      await handoffToRapJungle(blob,filename);
     }else if(RETURN_URL){
       $("returnRap").href=RETURN_URL;
       $("returnRap").classList.remove("hidden");
